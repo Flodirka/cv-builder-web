@@ -73,10 +73,20 @@ const blockText = (block: ResumeBlock) => {
 
 const hasLetters = (value: string) => /\p{L}/u.test(value);
 
+const trimCandidateEdges = (value: string, leading: string, trailing: string) => {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && leading.includes(value[start])) start += 1;
+  while (end > start && trailing.includes(value[end - 1])) end -= 1;
+
+  return value.slice(start, end);
+};
+
 const emailCandidates = (value: string) =>
   value
     .split(/\s+/u)
-    .map((part) => part.replace(/^[<(\[{]+|[>),.;\]}]+$/gu, ""))
+    .map((part) => trimCandidateEdges(part, "<([{", ">),.;]}"))
     .filter((part) => part.includes("@"));
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(value);
@@ -90,7 +100,7 @@ const isValidPhone = (value: string) => {
 
 const urlCandidates = (value: string) =>
   (value.match(/(?:https?:\/\/|www\.)[^\s<>()]+/giu) ?? []).map((candidate) =>
-    candidate.replace(/[),.;\]}]+$/gu, "")
+    trimCandidateEdges(candidate, "", "),.;]}")
   );
 
 const isValidUrl = (value: string) => {
