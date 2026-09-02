@@ -1,0 +1,25 @@
+.viewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 210mm;
+  transform-origin: top left;
+}
+
+.page > article {
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0;
+}

@@ -1,0 +1,82 @@
+.page {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  flex-direction: column;
+  overflow-x: hidden;
+  background: var(--color-surface-0);
+}
+
+.header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 20px 40px;
+  border-bottom: 1px solid var(--line);
+  background: var(--color-surface-0);
+}
+
+.title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.editorSection {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 840px) {
+  .header {
+    padding: 18px 24px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 14px 16px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+}
+
+@media print {
+  .page {
+    min-height: 0;
+    overflow: visible;
+    background: white;
+  }
+
+  .header {
+    display: none;
+  }
+
+  .editorSection {
+    display: block;
+  }
+}

@@ -1,0 +1,187 @@
+@page {
+  size: A4;
+  margin: 40px;
+  background: #ffffff;
+}
+
+.page {
+  width: 595px;
+  min-height: 842px;
+  margin: 0 auto;
+  padding: 40px;
+  background: #ffffff;
+  color: #000000;
+  font-family: var(--font-pt-serif, "Times New Roman", Times, serif);
+  font-size: 11px;
+  line-height: 1.16;
+  box-shadow: 0 12px 36px rgb(25 23 20 / 14%);
+}
+
+.header {
+  margin-bottom: 11px;
+  text-align: center;
+}
+
+.main {
+  display: block;
+}
+
+.footer {
+  margin-top: 12px;
+  font-size: 10px;
+  text-align: center;
+}
+
+.heading {
+  break-after: avoid;
+}
+
+.headingLevel1 {
+  margin: 0 0 5px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.headingLevel2 {
+  margin: 9px 0 5px;
+  border-bottom: 1px solid #000000;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.12;
+  text-transform: uppercase;
+}
+
+.headingLevel2 + .divider {
+  display: none;
+}
+
+.headingLevel3 {
+  margin: 7px 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.12;
+}
+
+.header .heading {
+  text-align: center;
+}
+
+.main .heading {
+  text-align: left;
+}
+
+.paragraph {
+  margin: 0 0 6px;
+}
+
+.labeledText {
+  margin: 0 0 4px;
+}
+
+.inlineLink {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.12em;
+}
+
+.header .paragraph {
+  margin-bottom: 5px;
+}
+
+.entry {
+  break-inside: avoid;
+  margin: 0 0 8px;
+}
+
+.entryTopline,
+.entrySubline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 16px;
+  align-items: baseline;
+}
+
+.entrySubline {
+  margin-top: 2px;
+}
+
+.entryPrimary,
+.entryLocation {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.entryLocation,
+.entryDate {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.entrySecondary,
+.entryDate,
+.entryDescription {
+  font-style: italic;
+}
+
+.entryDescription {
+  margin: 3px 0 0;
+}
+
+.bullets {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.bullets li {
+  margin: 0 0 2px;
+  padding-left: 1px;
+}
+
+.divider {
+  height: 1px;
+  margin: 7px 0;
+  border: 0;
+  background: #000000;
+}
+
+.spacer {
+  display: block;
+}
+
+.spacer-xs {
+  height: 3px;
+}
+
+.spacer-sm {
+  height: 6px;
+}
+
+.spacer-md {
+  height: 10px;
+}
+
+.spacer-lg {
+  height: 16px;
+}
+
+@media print {
+  :global(html),
+  :global(body) {
+    overflow: visible !important;
+    background: #ffffff !important;
+    color-scheme: light;
+  }
+
+  .page {
+    width: auto;
+    min-height: auto;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    box-shadow: none;
+  }
+}

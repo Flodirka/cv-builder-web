@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+coverage/
+.security-reports/
+.playwright-browsers/
+tmp/
+*.tsbuildinfo
+.env*
