@@ -15,6 +15,7 @@
     "test": "vitest run",
     "qa:static-flow": "node scripts/static-flow-qa.mjs",
     "qa:static-pdf": "node scripts/static-pdf-qa.mjs",
+    "qa:connected-builder": "node scripts/connected-builder-pairing-qa.mjs",
     "qa:static": "node scripts/serve-and-qa.mjs",
     "lint": "eslint .",
     "format": "prettier --check package.json package-lock.json tsconfig.json next.config.mjs vitest.config.ts eslint.config.mjs prettier.config.mjs \".github/**/*.{yml,yaml}\" \"packages/**/*.{json,mjs,ts,tsx,css}\" \"scripts/**/*.mjs\" \"src/**/*.{ts,tsx,css}\"",

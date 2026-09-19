@@ -6,10 +6,12 @@ describe("static Content Security Policy", () => {
     expect(STATIC_CONTENT_SECURITY_POLICY).toContain("object-src 'none'");
     expect(STATIC_CONTENT_SECURITY_POLICY).toContain("frame-src 'none'");
     expect(STATIC_CONTENT_SECURITY_POLICY).toContain("form-action 'none'");
-    expect(STATIC_CONTENT_SECURITY_POLICY).toContain("connect-src 'self' data:");
+    expect(STATIC_CONTENT_SECURITY_POLICY).toContain(
+      "connect-src 'self' data: https://cv-builder-relay.flodirka.workers.dev"
+    );
     expect(STATIC_CONTENT_SECURITY_POLICY).toContain("'wasm-unsafe-eval'");
     expect(STATIC_CONTENT_SECURITY_POLICY).not.toContain("'unsafe-eval'");
     expect(STATIC_CONTENT_SECURITY_POLICY).not.toContain("http:");
-    expect(STATIC_CONTENT_SECURITY_POLICY).not.toContain("https:");
+    expect(STATIC_CONTENT_SECURITY_POLICY).not.toContain("https:;");
   });
 });

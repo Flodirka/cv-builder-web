@@ -16,6 +16,7 @@ import {
   englishSampleResume,
   exportResumeJson,
   exportResumeMarkdown,
+  importResumeMarkdown,
   readLocalDraft,
   removeLocalDraft,
   writeLocalDraft,
@@ -26,7 +27,17 @@ import {
   type ResumeZone
 } from "@/resume";
 import { renderResumePdfBlob, ResumePrintDocument } from "@/templates";
-import { DocumentInterchange } from "./DocumentInterchange";
+import { DocumentInterchange, ImportPreview, type PendingImport } from "./DocumentInterchange";
+import {
+  acknowledgeRelayImport,
+  claimRelayMarkdown,
+  clearRelayConnection,
+  createRelayClaimNonce,
+  readRelayConnection,
+  takeRelayCapabilityFromFragment,
+  writeRelayConnection,
+  type RelayConnection
+} from "./connected-builder";
 import { PDF_INSPECTION_LIMITS, PUBLIC_FILE_LIMITS } from "./file-limits";
 import { PdfInspector } from "./PdfInspector";
 import { ScaledPrintPreview } from "./ScaledPrintPreview";
@@ -42,6 +53,14 @@ type Status =
   | { kind: "busy"; label: string }
   | { kind: "success"; label: string }
   | { kind: "error"; label: string };
+
+type ConnectedImportState =
+  | { kind: "idle" }
+  | { kind: "connected"; label: string }
+  | { kind: "importing"; label: string }
+  | { kind: "imported"; label: string }
+  | { kind: "expired"; label: string }
+  | { kind: "error"; label: string; retry: "claim" | "ack" | null };
 
 type MoveDirection = "up" | "down";
 type ManualBlockType =
@@ -1002,6 +1021,10 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
   const [exportPdfFileName, setExportPdfFileName] = useState(() => pdfFileName(initialPersonName));
   const [importPanelOpen, setImportPanelOpen] = useState(false);
+  const [connectedImportState, setConnectedImportState] = useState<ConnectedImportState>({
+    kind: "idle"
+  });
+  const [pendingConnectedImport, setPendingConnectedImport] = useState<PendingImport | null>(null);
   const [clearConfirmationOpen, setClearConfirmationOpen] = useState(false);
   const [resetConfirmationOpen, setResetConfirmationOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -1028,6 +1051,74 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
   const hasUnsavedChanges = JSON.stringify(resume) !== savedDocumentSignature;
   const editorIsEmpty = !hasClassicCompactEditorContent(blocks);
 
+  const claimConnectedImport = async (connection: RelayConnection) => {
+    setConnectedImportState({ kind: "importing", label: "Importing Connected Builder resume..." });
+    const result = await claimRelayMarkdown(connection);
+    if (result.kind === "expired") {
+      clearRelayConnection(window.sessionStorage);
+      setConnectedImportState({ kind: "expired", label: "Connected Builder link has expired" });
+      return;
+    }
+    if (result.kind === "network") {
+      setConnectedImportState({
+        kind: "error",
+        label: "Connected Builder is unavailable. Check your connection and retry.",
+        retry: "claim"
+      });
+      return;
+    }
+    if (result.kind === "error") {
+      clearRelayConnection(window.sessionStorage);
+      setConnectedImportState({
+        kind: "error",
+        label: "Connected Builder could not import this link.",
+        retry: null
+      });
+      return;
+    }
+
+    const parsed = importResumeMarkdown(result.markdown);
+    if (!parsed.ok) {
+      clearRelayConnection(window.sessionStorage);
+      setConnectedImportState({
+        kind: "error",
+        label: "Connected Builder received invalid Markdown. The current document was not changed.",
+        retry: null
+      });
+      return;
+    }
+    setPendingConnectedImport({
+      ...parsed.preview,
+      fileName: "Connected Builder Markdown",
+      format: "Markdown"
+    });
+    setConnectedImportState({ kind: "connected", label: "Connected resume is ready to import" });
+  };
+
+  const acknowledgeConnectedImport = async (connection: RelayConnection) => {
+    const result = await acknowledgeRelayImport({ ...connection, phase: "ack" });
+    if (result === "complete") {
+      clearRelayConnection(window.sessionStorage);
+      setConnectedImportState({ kind: "imported", label: "Connected Builder resume imported" });
+      return;
+    }
+    if (result === "network") {
+      setConnectedImportState({
+        kind: "error",
+        label:
+          "Resume imported locally, but Connected Builder could not confirm delivery. Retry acknowledgement.",
+        retry: "ack"
+      });
+      return;
+    }
+    clearRelayConnection(window.sessionStorage);
+    setConnectedImportState({
+      kind: "error",
+      label: "Resume imported locally, but Connected Builder could not confirm delivery.",
+      retry: null
+    });
+  };
+
   useEffect(() => {
     const handle = window.setTimeout(() => {
       const saved = readLocalDraft(window.localStorage);
@@ -1038,6 +1129,44 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
       setDocumentBase(saved);
       setSavedDocumentSignature(JSON.stringify(saved));
       setStatus({ kind: "success", label: "Loaded from this device" });
+    }, 0);
+    return () => window.clearTimeout(handle);
+  }, []);
+
+  useEffect(() => {
+    const fragment = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    const hasConnectFragment = new URLSearchParams(fragment).has("connect");
+    const capability = takeRelayCapabilityFromFragment(window.location, window.history);
+    const handle = window.setTimeout(() => {
+      try {
+        if (hasConnectFragment && !capability) {
+          clearRelayConnection(window.sessionStorage);
+          setConnectedImportState({
+            kind: "error",
+            label: "Connected Builder link is invalid.",
+            retry: null
+          });
+          return;
+        }
+        const connection = capability
+          ? { capability, claimNonce: createRelayClaimNonce(), phase: "claim" as const }
+          : readRelayConnection(window.sessionStorage);
+        if (!connection) return;
+        if (capability) writeRelayConnection(window.sessionStorage, connection);
+        if (connection.phase === "ack") {
+          void acknowledgeConnectedImport(connection);
+        } else {
+          void claimConnectedImport(connection);
+        }
+      } catch {
+        setConnectedImportState({
+          kind: "error",
+          label: "Connected Builder could not start this import in this browser.",
+          retry: null
+        });
+      }
     }, 0);
     return () => window.clearTimeout(handle);
   }, []);
@@ -1158,6 +1287,38 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
     setStatus({ kind: "success", label: "Local document imported" });
   };
 
+  const confirmConnectedImport = () => {
+    if (!pendingConnectedImport) return;
+    const connection = readRelayConnection(window.sessionStorage);
+    if (!connection) {
+      setPendingConnectedImport(null);
+      setConnectedImportState({ kind: "expired", label: "Connected Builder link has expired" });
+      return;
+    }
+    replaceDocument(pendingConnectedImport.resume);
+    setPendingConnectedImport(null);
+    const acknowledgement = { ...connection, phase: "ack" as const };
+    writeRelayConnection(window.sessionStorage, acknowledgement);
+    void acknowledgeConnectedImport(acknowledgement);
+  };
+
+  const cancelConnectedImport = () => {
+    clearRelayConnection(window.sessionStorage);
+    setPendingConnectedImport(null);
+    setConnectedImportState({
+      kind: "error",
+      label: "Connected Builder import was cancelled. The link will expire.",
+      retry: null
+    });
+  };
+
+  const retryConnectedImport = () => {
+    const connection = readRelayConnection(window.sessionStorage);
+    if (!connection || connectedImportState.kind !== "error" || !connectedImportState.retry) return;
+    if (connectedImportState.retry === "ack") void acknowledgeConnectedImport(connection);
+    else void claimConnectedImport(connection);
+  };
+
   const applyTemplate = (name: string) => {
     const match = builtInContentTemplates.find((template) => template.name === name);
     if (!match) return;
@@ -1223,14 +1384,21 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
 
   const isBusy = status.kind === "busy";
   const hasCleanBlocks = resume.layoutBlocks.length > 0;
-  const statusLabel =
-    status.kind === "idle"
+  const connectionOverridesStatus = connectedImportState.kind !== "idle";
+  const statusLabel = connectionOverridesStatus
+    ? connectedImportState.label
+    : status.kind === "idle"
       ? hasUnsavedChanges
         ? "Unsaved changes"
         : "All changes saved"
       : status.label;
-  const statusClass =
-    status.kind === "error"
+  const statusClass = connectionOverridesStatus
+    ? connectedImportState.kind === "error" || connectedImportState.kind === "expired"
+      ? styles.statusError
+      : connectedImportState.kind === "importing"
+        ? styles.statusBusy
+        : styles.statusSuccess
+    : status.kind === "error"
       ? styles.statusError
       : status.kind === "success"
         ? styles.statusSuccess
@@ -1272,8 +1440,15 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
         </div>
 
         <div className={`${styles.statusDisplay} ${statusClass}`} role="status" aria-live="polite">
-          {isBusy ? <span className={styles.statusSpinner} aria-hidden="true" /> : null}
+          {isBusy || connectedImportState.kind === "importing" ? (
+            <span className={styles.statusSpinner} aria-hidden="true" />
+          ) : null}
           <span>{statusLabel}</span>
+          {connectedImportState.kind === "error" && connectedImportState.retry ? (
+            <button className={styles.statusRetry} type="button" onClick={retryConnectedImport}>
+              Retry
+            </button>
+          ) : null}
         </div>
 
         <div className={styles.toolbarActions}>
@@ -1385,6 +1560,16 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
         onClose={() => setImportPanelOpen(false)}
         onReplace={replaceDocument}
       />
+
+      {pendingConnectedImport && (
+        <div className={styles.modalBackdrop} role="presentation">
+          <ImportPreview
+            pending={pendingConnectedImport}
+            onReplace={confirmConnectedImport}
+            onCancel={cancelConnectedImport}
+          />
+        </div>
+      )}
 
       <div className={styles.modalBackdrop} role="presentation" hidden={!exportPanelOpen}>
         <section

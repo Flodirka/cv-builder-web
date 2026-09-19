@@ -10,6 +10,7 @@ const eslintConfig = [
       "node_modules/**",
       "coverage/**",
       "dist/**",
+      "apps/**/dist/**",
       "out/**",
       ".qa-site/**",
       ".static-build-*/**",

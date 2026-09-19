@@ -21,6 +21,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@cv-builder/pdf-templates": ["./packages/pdf-templates/src/index.ts"],
+      "@cv-builder/pdf-templates/node": ["./packages/pdf-templates/src/node-pdf.tsx"],
       "@cv-builder/resume-core": ["./packages/resume-core/src/index.ts"]
     }
   },
@@ -31,5 +32,5 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist", "apps/connected-builder-mcp/**"]
 }

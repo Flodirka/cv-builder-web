@@ -53,6 +53,7 @@ process.env.CV_BUILDER_QA_URL = `http://127.0.0.1:${address.port}${basePath}/`;
 try {
   await import("./static-flow-qa.mjs");
   await import("./static-pdf-qa.mjs");
+  await import("./connected-builder-pairing-qa.mjs");
 } finally {
   await new Promise((resolveClose, rejectClose) =>
     server.close((error) => (error ? rejectClose(error) : resolveClose()))
