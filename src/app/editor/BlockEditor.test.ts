@@ -479,6 +479,10 @@ describe("BlockEditor helpers", () => {
     expect(html).toContain("Check finished PDF");
     expect(html).toContain('aria-label="Help and privacy"');
     expect(html).toContain('aria-label="Choose a template"');
+    expect(html).toContain(">Connect agent<");
+    expect(html).toContain('aria-labelledby="connect-agent-heading"');
+    expect(html).toContain("How it works");
+    expect(html).toContain('aria-label="Help and privacy"');
     expect(html).toContain(">Custom</option>");
     expect(html).toContain(">Classic Compact</option>");
     expect(html).toContain(">Simple ATS</option>");

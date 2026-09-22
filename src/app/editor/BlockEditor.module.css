@@ -221,7 +221,8 @@
 
 .exportModal,
 .confirmModal,
-.helpModal {
+.helpModal,
+.connectModal {
   width: min(760px, 100%);
   max-height: calc(100vh - 48px);
   overflow-y: auto;
@@ -279,6 +280,47 @@
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.connectEndpoint {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--foreground);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.connectPrompt {
+  margin: 8px 0 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--foreground);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.helpContent code {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.helpContent .exportActions {
+  padding: 10px 0 0;
 }
 
 .modalHeading {

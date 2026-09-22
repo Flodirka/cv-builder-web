@@ -1,3 +1,14 @@
+export const CONNECTED_BUILDER_MCP_ENDPOINT = "https://cv-builder-relay.flodirka.workers.dev/mcp";
+
+export const CONNECTED_BUILDER_SETUP_PROMPT = `Connect this CV Builder to my agent.
+
+1. Add an MCP server with this Streamable HTTP endpoint:
+${CONNECTED_BUILDER_MCP_ENDPOINT}
+2. The server exposes one tool: open_builder with input { "markdown": "<cv-builder/v1 Markdown>" }.
+3. Read its Markdown resources (cv-builder://markdown/v1, cv-builder://templates) before composing.
+4. Draft my resume in the cv-builder/v1 skeleton and call open_builder.
+5. Hand me the returned one-time Builder link; I open it within 5 minutes and confirm the import.`;
+
 export const CONNECTED_BUILDER_RELAY_ORIGIN = "https://cv-builder-relay.flodirka.workers.dev";
 export const connectedBuilderStorageKey = "cv-builder.connected-builder.v1";
 

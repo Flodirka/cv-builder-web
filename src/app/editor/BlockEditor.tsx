@@ -32,6 +32,8 @@ import {
   acknowledgeRelayImport,
   claimRelayMarkdown,
   clearRelayConnection,
+  CONNECTED_BUILDER_MCP_ENDPOINT,
+  CONNECTED_BUILDER_SETUP_PROMPT,
   createRelayClaimNonce,
   readRelayConnection,
   takeRelayCapabilityFromFragment,
@@ -1028,6 +1030,8 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
   const [clearConfirmationOpen, setClearConfirmationOpen] = useState(false);
   const [resetConfirmationOpen, setResetConfirmationOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [connectPanelOpen, setConnectPanelOpen] = useState(false);
+  const [agentPromptCopied, setAgentPromptCopied] = useState(false);
   const [savedDocumentSignature, setSavedDocumentSignature] = useState(() =>
     JSON.stringify(createEditorResume(initialPersonName, initialBlocks))
   );
@@ -1382,6 +1386,16 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
     setStatus({ kind: "success", label: "Local data cleared" });
   };
 
+  const copyAgentSetupPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(CONNECTED_BUILDER_SETUP_PROMPT);
+      setAgentPromptCopied(true);
+    } catch {
+      setAgentPromptCopied(false);
+      setStatus({ kind: "error", label: "Copy failed in this browser" });
+    }
+  };
+
   const isBusy = status.kind === "busy";
   const hasCleanBlocks = resume.layoutBlocks.length > 0;
   const connectionOverridesStatus = connectedImportState.kind !== "idle";
@@ -1474,6 +1488,13 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
           </button>
           <PdfInspector disabled={isBusy} />
           <button
+            className={styles.btn}
+            onClick={() => setConnectPanelOpen(true)}
+            disabled={isBusy}
+          >
+            Connect agent
+          </button>
+          <button
             className={styles.helpButton}
             type="button"
             onClick={() => setHelpOpen(true)}
@@ -1550,6 +1571,20 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
                   {PDF_INSPECTION_LIMITS.pages} pages.
                 </p>
               </section>
+              <section>
+                <h3>Connect to your agent</h3>
+                <p>
+                  You can ask an AI agent (Claude, Codex, or any MCP client) to draft your resume.
+                  The agent prepares the document and hands you a one-time link; opening it here
+                  fills the editor with the imported content after you confirm. Editing, ATS checks,
+                  and PDF export stay local.
+                </p>
+                <p>
+                  Use the “Connect agent” button in the toolbar to copy the endpoint and a
+                  ready-to-paste setup prompt for your agent. The relay holds one Markdown payload
+                  for 5 minutes and deletes it after your import.
+                </p>
+              </section>
             </div>
           </section>
         </div>
@@ -1570,6 +1605,53 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
           />
         </div>
       )}
+
+      <div className={styles.modalBackdrop} role="presentation" hidden={!connectPanelOpen}>
+        <section
+          className={styles.connectModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="connect-agent-heading"
+        >
+          <div className={styles.modalHeading}>
+            <h2 id="connect-agent-heading">Connect to your agent</h2>
+            <button className={styles.btn} type="button" onClick={() => setConnectPanelOpen(false)}>
+              Close
+            </button>
+          </div>
+          <div className={styles.helpContent}>
+            <section>
+              <h3>How it works</h3>
+              <p>
+                Ask your agent to draft your resume and call its <code>open_builder</code> tool. The
+                agent returns a one-time link that is valid for 5 minutes. Open the link in your
+                browser, confirm “Replace current document”, and the resume appears here for local
+                editing, ATS checks, and PDF export. The relay deletes the document as soon as you
+                import it.
+              </p>
+            </section>
+            <section>
+              <h3>MCP endpoint</h3>
+              <p className={styles.connectEndpoint}>{CONNECTED_BUILDER_MCP_ENDPOINT}</p>
+            </section>
+            <section>
+              <h3>Setup prompt</h3>
+              <p>Paste this into a new chat with your agent to wire it up:</p>
+              <pre className={styles.connectPrompt}>{CONNECTED_BUILDER_SETUP_PROMPT}</pre>
+              <div className={styles.exportActions}>
+                <button
+                  className={styles.btn}
+                  type="button"
+                  onClick={() => void copyAgentSetupPrompt()}
+                >
+                  Copy agent setup prompt
+                </button>
+                {agentPromptCopied ? <span role="status">Copied</span> : null}
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
 
       <div className={styles.modalBackdrop} role="presentation" hidden={!exportPanelOpen}>
         <section

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   acknowledgeRelayImport,
   claimRelayMarkdown,
+  CONNECTED_BUILDER_MCP_ENDPOINT,
+  CONNECTED_BUILDER_SETUP_PROMPT,
   connectedBuilderStorageKey,
   readRelayConnection,
   takeRelayCapabilityFromFragment
@@ -61,6 +63,16 @@ describe("Connected Builder relay client", () => {
         body: "{}"
       })
     );
+  });
+
+  it("exposes the reviewed MCP endpoint and a copyable setup prompt", () => {
+    expect(CONNECTED_BUILDER_MCP_ENDPOINT).toBe(
+      "https://cv-builder-relay.flodirka.workers.dev/mcp"
+    );
+    expect(CONNECTED_BUILDER_SETUP_PROMPT).toContain(CONNECTED_BUILDER_MCP_ENDPOINT);
+    expect(CONNECTED_BUILDER_SETUP_PROMPT).toContain("open_builder");
+    expect(CONNECTED_BUILDER_SETUP_PROMPT).toContain("cv-builder/v1");
+    expect(CONNECTED_BUILDER_SETUP_PROMPT).not.toMatch(/#connect=/u);
   });
 
   it("retries a lost acknowledgement response and accepts terminal expiry", async () => {

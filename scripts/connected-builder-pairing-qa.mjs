@@ -93,6 +93,37 @@ try {
 
   {
     const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(siteUrl, { waitUntil: "load" });
+    await page.getByRole("button", { name: "Connect agent" }).click();
+    await page.getByText("How it works", { exact: true }).waitFor();
+    const endpoint = await page
+      .getByText("https://cv-builder-relay.flodirka.workers.dev/mcp", {
+        exact: true
+      })
+      .textContent();
+    assert(
+      endpoint === "https://cv-builder-relay.flodirka.workers.dev/mcp",
+      "Connect affordance shows the wrong MCP endpoint"
+    );
+    assert(
+      (
+        await page.locator("section[aria-labelledby='connect-agent-heading'] pre").textContent()
+      )?.includes("open_builder") === true,
+      "Connect dialog does not show the agent setup prompt"
+    );
+    await page.getByRole("button", { name: "Copy agent setup prompt" }).click();
+    await page.getByText("Copied", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Close" }).click();
+
+    await page.getByRole("button", { name: "Help and privacy" }).click();
+    await page.getByText("Use the “Connect agent” button", { exact: false }).waitFor();
+    results.push("connect affordance");
+    await context.close();
+  }
+
+  {
+    const context = await browser.newContext();
     await relayRoute(context, (route) =>
       route.fulfill({ status: 200, contentType: "text/markdown; charset=utf-8", body: "" })
     );
