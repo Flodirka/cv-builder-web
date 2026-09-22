@@ -1,17 +1,21 @@
 # CV Builder Web
 
-A public, local-first resume editor. Resume content stays in the browser unless the user explicitly
-downloads a PDF, Markdown file, or JSON backup.
+A public, local-first resume editor with an optional Connected Builder handoff for MCP agents.
+Normal editing stays in the browser. When a user explicitly connects an agent, the agent's Markdown
+is held by the relay only long enough to deliver it to one Builder tab.
 
 ## Privacy model
 
-- Editing, draft storage, import, export, PDF generation, and finished-PDF inspection run locally in
+- Editing, draft storage, local import/export, PDF generation, and finished-PDF inspection run in
   the browser.
-- The app has no accounts, analytics, advertising, upload API, database, or server-side resume
+- The editor has no accounts, analytics, advertising, upload API, database, or server-side PDF
   processing.
 - `Save draft in browser` writes one draft to this site's local browser storage. `Clear local data`
   removes it.
 - The service worker caches only application files for offline use. It does not cache resume data.
+- The optional Connected Builder relay receives only agent-supplied Markdown, holds it for at most
+  five minutes, and deletes it after the user acknowledges the import. It never receives a local
+  draft, ATS result, finished PDF, or PDF-inspection data.
 
 See [PRIVACY.md](PRIVACY.md) for the complete data flow and browser-storage behavior.
 
@@ -44,22 +48,31 @@ matched value.
 CV_BUILDER_BASE_PATH=/repository-name npm run build
 ```
 
-The static site is written to `out/`. GitHub Pages deployment is intentionally separate from the
-optional self-hosted automation service.
+The static site is written to `out/`. GitHub Pages hosts the editor; the optional Cloudflare Worker
+below is a separate, short-lived Markdown handoff service.
 
-## Automation and self-hosting
+## Connect an agent
 
-CV Builder Web is the standalone editor and does not require a server. A second project, **CV
-Builder Automation**, is planned as a separate downloadable repository for people who want to run
-the document pipeline on their own server.
+CV Builder works without an account or server. To draft a resume with an MCP-capable agent, open the
+published Builder, select **Connect agent**, and give the agent the displayed setup prompt. The MCP
+endpoint is:
 
-That service will be available as a release or container and can also be forked. Its first supported
-setup will connect Notion through n8n, with Telegram as an optional delivery channel. The integration
-boundary uses the shared `cv-builder/v1` document format, so future adapters can connect other
-content sources, delivery channels, and agent workflows without turning this web editor into a
-hosted account product.
+```text
+https://cv-builder-relay.flodirka.workers.dev/mcp
+```
 
-CV Builder Automation is not part of this repository and is not required to use CV Builder Web.
+The agent reads the `cv-builder/v1` Markdown guidance and calls `open_builder`. It returns a
+one-time `#connect` link. Open that link in a browser within five minutes, review the replacement,
+and choose **Replace current document** to import it. The link capability is removed from the visible
+URL before the first relay request; after acknowledgement, the payload is deleted and reuse returns
+`410 Gone`.
+
+The Worker never renders, verifies, stores, or returns a PDF. The Builder remains the only editor,
+ATS checker, finished-PDF inspector, and PDF renderer. A static MCP Apps opener may be available in
+some clients, but the browser link is the only proved integration path and is always returned.
+
+The relay accepts canonical Markdown only. It does not accept raw HTML, JSON documents, files,
+fetchable URLs, Notion, n8n, Telegram, accounts, OAuth, or a request to choose PDF presentation.
 
 ## Supported browsers and PDF limitations
 
