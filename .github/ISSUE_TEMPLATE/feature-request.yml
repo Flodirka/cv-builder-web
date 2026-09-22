@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose a focused improvement to the public local-first editor.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Explain the user need rather than only the implementation idea.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: Describe the smallest useful change in behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Public-release boundary
+      options:
+        - label: This proposal does not require accounts, remote resume storage, analytics, or server-side PDF handling.
+          required: true
+        - label: This proposal does not require owner-only Notion, n8n, or Telegram integrations.
+          required: true
