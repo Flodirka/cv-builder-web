@@ -1031,7 +1031,9 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
   const [resetConfirmationOpen, setResetConfirmationOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [connectPanelOpen, setConnectPanelOpen] = useState(false);
-  const [agentPromptCopied, setAgentPromptCopied] = useState(false);
+  const [agentPromptCopyState, setAgentPromptCopyState] = useState<"idle" | "copied" | "blocked">(
+    "idle"
+  );
   const [savedDocumentSignature, setSavedDocumentSignature] = useState(() =>
     JSON.stringify(createEditorResume(initialPersonName, initialBlocks))
   );
@@ -1389,10 +1391,9 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
   const copyAgentSetupPrompt = async () => {
     try {
       await navigator.clipboard.writeText(CONNECTED_BUILDER_SETUP_PROMPT);
-      setAgentPromptCopied(true);
+      setAgentPromptCopyState("copied");
     } catch {
-      setAgentPromptCopied(false);
-      setStatus({ kind: "error", label: "Copy failed in this browser" });
+      setAgentPromptCopyState("blocked");
     }
   };
 
@@ -1646,7 +1647,10 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
                 >
                   Copy agent setup prompt
                 </button>
-                {agentPromptCopied ? <span role="status">Copied</span> : null}
+                {agentPromptCopyState === "copied" ? <span role="status">Copied</span> : null}
+                {agentPromptCopyState === "blocked" ? (
+                  <span role="status">Clipboard blocked — select the prompt text above</span>
+                ) : null}
               </div>
             </section>
           </div>

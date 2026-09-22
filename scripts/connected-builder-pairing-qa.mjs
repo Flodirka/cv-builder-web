@@ -92,7 +92,9 @@ try {
   }
 
   {
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+      permissions: ["clipboard-read", "clipboard-write"]
+    });
     const page = await context.newPage();
     await page.goto(siteUrl, { waitUntil: "load" });
     await page.getByRole("button", { name: "Connect agent" }).click();
