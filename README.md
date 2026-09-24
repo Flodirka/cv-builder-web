@@ -109,4 +109,3 @@ reporting a vulnerability, and [CONTRIBUTING.md](CONTRIBUTING.md) before opening
 CV Builder is free and account-free. Voluntary support links, if the operator provides them,
 live in the plugin's [SUPPORT.md](https://github.com/Flodirka/cv-builder-plugin/blob/main/SUPPORT.md).
 Support never changes the product: no accounts, no perks, no feature gates.
-
