@@ -1,7 +1,11 @@
 # CV Builder Web
 
-A public, local-first resume editor with an optional Connected Builder handoff for MCP agents.
-Open the published editor: [CV Builder Web](https://flodirka.github.io/cv-builder-web/).
+CV Builder Web is a public, local-first resume editor with an optional Connected Builder handoff
+for MCP agents. Open the published editor: [CV Builder Web](https://flodirka.github.io/cv-builder-web/).
+
+The [CV Builder plugin](https://github.com/Flodirka/cv-builder-plugin) packages four resume
+workflows (draft, tailor, review, and rewrite) with the same MCP server. Its README covers
+installation and agent use.
 
 Normal editing happens in the browser. When a user connects an agent, the relay holds the agent's
 Markdown only long enough to deliver it to one Builder tab.
@@ -71,7 +75,8 @@ URL before the first relay request; after acknowledgement, the payload is delete
 
 The Worker never renders, verifies, stores, or returns a PDF. The Builder is the only editor, ATS
 checker, finished-PDF inspector, and PDF renderer. A static MCP Apps opener may be available in some
-clients, but the browser link is the only proved integration path and is always returned.
+clients, but the browser link is the only integration path verified across supported clients and
+is always returned.
 
 The relay accepts canonical Markdown only. It does not accept raw HTML, JSON documents, files,
 fetchable URLs, Notion, n8n, Telegram, accounts, OAuth, or a request to choose PDF presentation.
@@ -92,3 +97,16 @@ unsupported fonts, scripts, interactive forms, media, or arbitrary HTML from imp
 
 The source is available under the [MIT License](LICENSE). Read [SECURITY.md](SECURITY.md) before
 reporting a vulnerability, and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## Related projects
+
+- [cv-builder-plugin](https://github.com/Flodirka/cv-builder-plugin) is the installable agent
+  companion to this editor. It includes four resume-writing skills and the public MCP server used
+  for Connected Builder handoffs.
+
+## Support the project
+
+CV Builder is free and account-free. Voluntary support links, if the operator provides them,
+live in the plugin's [SUPPORT.md](https://github.com/Flodirka/cv-builder-plugin/blob/main/SUPPORT.md).
+Support never changes the product: no accounts, no perks, no feature gates.
+
