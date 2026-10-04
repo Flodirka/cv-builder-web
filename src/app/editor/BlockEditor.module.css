@@ -299,6 +299,7 @@
 
 .exportModal {
   scrollbar-gutter: stable;
+  overflow-y: scroll;
 }
 
 .helpModal {
@@ -1608,6 +1609,29 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--color-surface-2);
+}
+
+.pdfExportPages {
+  display: grid;
+  gap: 24px;
+}
+
+.pdfExportPages figure {
+  min-width: 0;
+  margin: 0;
+}
+
+.pdfExportPages figcaption {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pdfExportPages canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: white;
 }
 
 .addQuickButton {

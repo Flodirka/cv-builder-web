@@ -47,6 +47,13 @@ try {
   for (const name of names.filter((name) => name !== "Custom")) {
     await picker.selectOption(name);
     await page.getByRole("button", { name: "Export", exact: true }).click();
+    const preview = page.getByLabel("PDF export preview");
+    await preview.locator('[aria-busy="false"]').waitFor({ timeout: 45000 });
+    assert(
+      !(await page.getByRole("dialog", { name: "Export", exact: true }).innerText()).includes(
+        "estimated"
+      )
+    );
     if (name === "Minimal" || name === "Japan") {
       for (const height of [1260, 1280, 1300, 1320, 1340, 1360, 1380]) {
         await page.setViewportSize({ width: 1440, height });
@@ -112,11 +119,30 @@ try {
     if (name === "Japan") {
       assert.equal(pages, 2, "Japan must export two pages");
       assert(allText.includes("免許") && allText.includes("学歴"), "Japanese PDF lost text");
+      const dialog = page.getByRole("dialog", { name: "Export", exact: true });
+      assert.equal(await preview.locator("canvas").count(), pages);
+      assert(await dialog.evaluate((element) => element.scrollHeight > element.clientHeight));
+      await preview
+        .getByRole("img", { name: "PDF page 2 of 2", exact: true })
+        .scrollIntoViewIfNeeded();
+      assert(
+        await dialog.evaluate((element) => element.scrollTop > 0),
+        "Second PDF page is not scrollable"
+      );
+      assert(
+        pdfBytes.equals(await download("Download PDF")),
+        "Download differs from the previewed PDF"
+      );
     }
+    assert.equal(
+      await preview.locator("canvas").count(),
+      pages,
+      `${name}: missing PDF preview pages`
+    );
     await loading.destroy();
     await page.screenshot({ path: join(output, `${slug}-preview.png`), fullPage: true });
     await page
-      .locator('[aria-label="PDF export preview"] article')
+      .locator('[aria-label="PDF export preview"] figure')
       .first()
       .screenshot({ path: join(output, `${slug}-a4.png`) });
     await closeExport();

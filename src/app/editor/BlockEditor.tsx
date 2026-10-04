@@ -57,7 +57,7 @@ import {
 import { assertPublicFileSize, PDF_INSPECTION_LIMITS, PUBLIC_FILE_LIMITS } from "./file-limits";
 import { PdfInspector } from "./PdfInspector";
 import { IconPicker } from "./IconPicker";
-import { ScaledPrintPreview } from "./ScaledPrintPreview";
+import { PdfExportPreview } from "./PdfExportPreview";
 import styles from "./BlockEditor.module.css";
 
 export type BlockEditorProps = {
@@ -2132,6 +2132,10 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [lastDeletion, setLastDeletion] = useState<DeletedBlock | null>(null);
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
+  const [exportPdf, setExportPdf] = useState<
+    { kind: "loading" } | { kind: "ready"; blob: Blob } | { kind: "error" }
+  >({ kind: "loading" });
+  const exportRequestId = useRef(0);
   const [exportPdfFileName, setExportPdfFileName] = useState(() => pdfFileName(initialPersonName));
   const [importPanelOpen, setImportPanelOpen] = useState(false);
   const [connectedImportState, setConnectedImportState] = useState<ConnectedImportState>({
@@ -2457,17 +2461,24 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
     setResetConfirmationOpen(false);
   };
 
-  const openExportPanel = () => {
+  const openExportPanel = async () => {
+    const requestId = ++exportRequestId.current;
     setExportPdfFileName(pdfFileName(resume.person.fullName));
+    setExportPdf({ kind: "loading" });
     setExportPanelOpen(true);
-  };
-
-  const downloadPdf = async () => {
-    setStatus({ kind: "busy", label: "Building PDF" });
     try {
       const fontBaseUrl = new URL("fonts/pt-serif-pdf/", document.baseURI).toString();
       const blob = await renderResumePdfBlob({ fontBaseUrl, resume });
-      downloadBlob(blob, pdfFileName(exportPdfFileName));
+      if (exportRequestId.current === requestId) setExportPdf({ kind: "ready", blob });
+    } catch {
+      if (exportRequestId.current === requestId) setExportPdf({ kind: "error" });
+    }
+  };
+
+  const downloadPdf = () => {
+    if (exportPdf.kind !== "ready") return;
+    try {
+      downloadBlob(exportPdf.blob, pdfFileName(exportPdfFileName));
       setStatus({ kind: "success", label: "PDF downloaded" });
     } catch {
       setStatus({ kind: "error", label: "PDF export failed" });
@@ -2804,57 +2815,65 @@ export function BlockEditor({ initialBlocks, initialPersonName }: BlockEditorPro
         </section>
       </div>
 
-      <div className={styles.modalBackdrop} role="presentation" hidden={!exportPanelOpen}>
-        <section
-          className={styles.exportModal}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="export-pdf-heading"
-        >
-          <div className={styles.modalHeading}>
-            <h2 id="export-pdf-heading">Export</h2>
-            <button className={styles.btn} type="button" onClick={() => setExportPanelOpen(false)}>
-              Close
-            </button>
-          </div>
-          <div className={styles.exportActions}>
-            <label className={`${styles.compactField} ${styles.exportFilename}`}>
-              <span>PDF filename</span>
-              <input
-                className={styles.input}
-                type="text"
-                value={exportPdfFileName}
-                onChange={(event) => setExportPdfFileName(event.target.value)}
-                onFocus={(event) => event.currentTarget.select()}
-              />
-            </label>
-            <button
-              className={styles.btnPrimary}
-              type="button"
-              disabled={isBusy}
-              onClick={() => void downloadPdf()}
-            >
-              Download PDF
-            </button>
-            <span>
-              A4 · estimated {estimatedPageCount} {estimatedPageCount === 1 ? "page" : "pages"}
-            </span>
-          </div>
-          <div className={styles.exportActions}>
-            <button className={styles.btn} type="button" onClick={() => exportFile("JSON")}>
-              Export JSON backup
-            </button>
-            <button className={styles.btn} type="button" onClick={() => exportFile("Markdown")}>
-              Export Markdown
-            </button>
-          </div>
-          <div className={styles.exportPreview} aria-label="PDF export preview">
-            <ScaledPrintPreview>
-              <A4PreviewDocument resume={resume} />
-            </ScaledPrintPreview>
-          </div>
-        </section>
-      </div>
+      {exportPanelOpen && (
+        <div className={styles.modalBackdrop} role="presentation">
+          <section
+            className={styles.exportModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-pdf-heading"
+          >
+            <div className={styles.modalHeading}>
+              <h2 id="export-pdf-heading">Export</h2>
+              <button
+                className={styles.btn}
+                type="button"
+                onClick={() => {
+                  exportRequestId.current++;
+                  setExportPanelOpen(false);
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div className={styles.exportActions}>
+              <label className={`${styles.compactField} ${styles.exportFilename}`}>
+                <span>PDF filename</span>
+                <input
+                  className={styles.input}
+                  type="text"
+                  value={exportPdfFileName}
+                  onChange={(event) => setExportPdfFileName(event.target.value)}
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </label>
+              <button
+                className={styles.btnPrimary}
+                type="button"
+                disabled={isBusy || exportPdf.kind !== "ready"}
+                onClick={() => void downloadPdf()}
+              >
+                Download PDF
+              </button>
+            </div>
+            <div className={styles.exportActions}>
+              <button className={styles.btn} type="button" onClick={() => exportFile("JSON")}>
+                Export JSON backup
+              </button>
+              <button className={styles.btn} type="button" onClick={() => exportFile("Markdown")}>
+                Export Markdown
+              </button>
+            </div>
+            <div className={styles.exportPreview} aria-label="PDF export preview">
+              {exportPdf.kind === "loading" && <p role="status">Preparing PDF…</p>}
+              {exportPdf.kind === "error" && (
+                <p role="alert">PDF export failed. Close and reopen Export to retry.</p>
+              )}
+              {exportPdf.kind === "ready" && <PdfExportPreview blob={exportPdf.blob} />}
+            </div>
+          </section>
+        </div>
+      )}
 
       {resetConfirmationOpen && (
         <div className={styles.modalBackdrop} role="presentation">

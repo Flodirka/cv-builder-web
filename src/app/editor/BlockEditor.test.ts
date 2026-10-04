@@ -597,7 +597,7 @@ describe("BlockEditor helpers", () => {
     expect(html).not.toContain('aria-labelledby="pdf-inspector-heading"');
   });
 
-  it("offers local Markdown and JSON file actions", () => {
+  it("keeps export preview unmounted until opened and exposes local import actions", () => {
     const html = renderToStaticMarkup(
       createElement(BlockEditor, {
         initialPersonName: "Local files QA",
@@ -606,9 +606,9 @@ describe("BlockEditor helpers", () => {
     );
 
     expect(html).toContain("Import Markdown");
-    expect(html).toContain("Export Markdown");
+    expect(html).not.toContain('aria-labelledby="export-pdf-heading"');
     expect(html).toContain("Import JSON backup");
-    expect(html).toContain("Export JSON backup");
+    expect(html).not.toContain('aria-label="PDF export preview"');
     expect(html).toContain("examples/cv-example-en.md");
     expect(html).toContain("examples/cv-example-ru.md");
   });
@@ -641,7 +641,7 @@ describe("BlockEditor helpers", () => {
     expect([...html.matchAll(/>Add block</g)]).toHaveLength(1);
     expect(html).not.toContain('aria-label="Document language"');
     expect(html).not.toContain("Blank resume");
-    expect(html).toContain("PDF filename");
+    expect(html).not.toContain("PDF filename");
     expect(html).not.toContain("Save as example");
     expect(html).not.toContain("Save as browser template");
   });
