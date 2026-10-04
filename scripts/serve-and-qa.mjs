@@ -1,13 +1,15 @@
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize, relative, resolve } from "node:path";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const outRoot = join(projectRoot, "out");
-const basePath = process.env.CV_BUILDER_QA_BASE_PATH ?? "/cv-builder-web";
-if (!/^\/[A-Za-z0-9._-]+$/u.test(basePath)) {
-  throw new Error(`CV_BUILDER_QA_BASE_PATH must be one URL segment: ${basePath}`);
+const builtHtml = await readFile(join(outRoot, "index.html"), "utf8");
+const basePath =
+  process.env.CV_BUILDER_QA_BASE_PATH ?? /src="([^"]*)\/_next\//u.exec(builtHtml)?.[1] ?? "";
+if (basePath && !/^\/[A-Za-z0-9._-]+$/u.test(basePath)) {
+  throw new Error(`CV_BUILDER_QA_BASE_PATH must be empty or one URL segment: ${basePath}`);
 }
 
 const mimeTypes = {
@@ -53,6 +55,9 @@ process.env.CV_BUILDER_QA_URL = `http://127.0.0.1:${address.port}${basePath}/`;
 try {
   await import("./static-flow-qa.mjs");
   await import("./static-pdf-qa.mjs");
+  await import("./static-layout-qa.mjs");
+  await import("./static-editor-layout-qa.mjs");
+  await import("./static-japanese-qa.mjs");
   await import("./connected-builder-pairing-qa.mjs");
 } finally {
   await new Promise((resolveClose, rejectClose) =>

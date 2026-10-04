@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { englishSampleResume, russianSampleResume } from "@/resume";
-import { ResumePrintDocument } from "./index";
+import { A4PreviewDocument } from "./index";
 
 describe("universal A4 resume renderer", () => {
   it.each([
@@ -9,7 +9,7 @@ describe("universal A4 resume renderer", () => {
     ["ru", russianSampleResume]
   ] as const)("renders the complete %s document without mutation", (_language, resume) => {
     const before = structuredClone(resume);
-    const html = renderToStaticMarkup(<ResumePrintDocument resume={resume} />);
+    const html = renderToStaticMarkup(<A4PreviewDocument resume={resume} />);
 
     expect(html).toContain(resume.person.fullName);
     expect(resume).toEqual(before);
@@ -45,7 +45,7 @@ describe("universal A4 resume renderer", () => {
       ]
     };
     const before = structuredClone(resume);
-    const html = renderToStaticMarkup(<ResumePrintDocument resume={resume} />);
+    const html = renderToStaticMarkup(<A4PreviewDocument resume={resume} />);
 
     expect(html).not.toContain("HIDDEN CONTENT");
     expect(html).toContain("Portfolio entry");

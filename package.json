@@ -1,6 +1,6 @@
 {
   "name": "cv-builder-web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -15,6 +15,8 @@
     "test": "vitest run",
     "qa:static-flow": "node scripts/static-flow-qa.mjs",
     "qa:static-pdf": "node scripts/static-pdf-qa.mjs",
+    "qa:layouts": "node scripts/static-layout-qa.mjs",
+    "qa:editor-layouts": "node scripts/static-editor-layout-qa.mjs",
     "qa:connected-builder": "node scripts/connected-builder-pairing-qa.mjs",
     "qa:static": "node scripts/serve-and-qa.mjs",
     "lint": "eslint .",
@@ -25,7 +27,7 @@
   "dependencies": {
     "@cv-builder/pdf-templates": "1.0.0",
     "@cv-builder/resume-core": "1.0.0",
-    "next": "^16.3.4",
+    "next": "^16.3.8",
     "pdfjs-dist": "^6.2.108",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -37,7 +39,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.1",
-    "eslint-config-next": "^16.3.4",
+    "eslint-config-next": "^16.3.8",
     "playwright": "1.61.0",
     "prettier": "3.8.4",
     "typescript": "^6.0.3",

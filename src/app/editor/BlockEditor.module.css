@@ -7,6 +7,66 @@
   flex-direction: column;
 }
 
+.pageSurface.japanese {
+  font-family: "Zen Kaku Gothic CV Builder", sans-serif;
+  font-size: 13.3333px;
+  line-height: 1.45;
+}
+.editTable {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.editTable td {
+  position: relative;
+  border: 1px solid currentColor;
+  padding: 6px;
+  vertical-align: top;
+}
+.editTable textarea {
+  font: inherit;
+  text-align: inherit;
+  min-height: 1.5em;
+}
+.tableControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-family: var(--font-ui, sans-serif);
+  font-size: 11px;
+}
+.tableControls button,
+.tableRowDelete {
+  color: var(--foreground);
+  background: var(--color-surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.tableRowDelete {
+  position: absolute;
+  right: 0;
+  top: 0;
+  opacity: 0;
+}
+.editTable td:focus-within .tableRowDelete,
+.editTable td:hover .tableRowDelete,
+.tableRowDelete:focus {
+  opacity: 1;
+}
+.pageBreak {
+  border-top: 1px dashed currentColor;
+  margin: 20px 0;
+  text-align: center;
+  font-size: 11px;
+}
+.writingTip {
+  padding: 8px;
+  max-width: 260px;
+  font-size: 12px;
+}
+
 .toolbar {
   position: relative;
   display: flex;
@@ -235,6 +295,11 @@
 .confirmModal {
   width: min(520px, 100%);
   padding: 24px;
+}
+
+.exportModal {
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
 }
 
 .helpModal {
@@ -691,6 +756,54 @@
   border-bottom: 0;
 }
 
+.profileHeaderGrid {
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.profileHeaderPhoto,
+.profileHeaderText {
+  min-width: 0;
+}
+
+.profileHeaderGrid--right {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 150px);
+}
+
+.profileHeaderGrid--right .profileHeaderPhoto {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.profileHeaderGrid--right .profileHeaderText {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.profileHeaderGrid--above {
+  grid-template-columns: 1fr;
+}
+
+.profileHeaderGrid--above .profileHeaderPhoto {
+  width: 150px;
+  justify-self: center;
+}
+
+.profileHeaderPhoto .imageBlockEdit {
+  padding: 8px;
+}
+
+.profileHeaderPhoto .imagePreview {
+  min-height: 120px;
+}
+
+.profileHeaderPhoto .imageSizeInputs {
+  flex-direction: column;
+  gap: 8px;
+}
+
 .zone-main {
   gap: 0;
 }
@@ -767,7 +880,7 @@
 .quickActions {
   position: absolute;
   top: 30px;
-  right: -30px;
+  left: -36px;
   z-index: 30;
   display: none;
   width: 190px;
@@ -779,6 +892,7 @@
   background: var(--color-paper);
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  transform: translateX(-100%);
 }
 
 .quickActionsOpen {
@@ -850,10 +964,15 @@
   background: rgb(35 7 75 / 12%);
 }
 
+.menuChoice[aria-pressed="true"] {
+  background: var(--color-depth);
+  color: #fff;
+}
+
 .dragHandle {
   position: absolute;
   top: 0;
-  right: -30px;
+  left: -30px;
   bottom: 0;
   z-index: 5;
   display: grid;
@@ -1022,10 +1141,97 @@
 }
 
 .headingEdit {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  width: 100%;
+}
+
+.headingContent {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.4em;
+  min-width: 0;
+}
+
+.headingTextGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.zone-header .headingContent {
+  justify-content: center;
+}
+
+.profileHeaderText .headingContent {
+  justify-content: flex-start;
+}
+
+.profileHeaderGrid--above .headingContent {
+  justify-content: center;
+}
+
+.columnsEditor {
+  display: grid;
+  grid-template-columns: var(--column-tracks);
+  gap: 24px;
+}
+
+.columnEditor {
+  container-type: inline-size;
+  min-width: 0;
+  padding: 8px 0 8px 24px;
+  border: 1px dashed rgb(35 7 75 / 18%);
+  border-radius: 4px;
+}
+
+.columnLabel {
+  display: block;
+  margin-bottom: 6px;
+  color: rgb(35 7 75 / 45%);
+  font:
+    9px Inter,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+
+.columnEditor .quickActions {
+  left: 0;
+  transform: none;
+}
+
+.headingTextInput {
+  width: auto;
+  max-width: 100%;
+  field-sizing: content;
+  flex: 0 1 auto;
+  text-align: inherit;
+}
+
+.headingIcon {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+.iconTrigger {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.emptyIconTrigger {
+  border: 1px dashed currentcolor;
+  opacity: 0.45;
+  width: 1em;
+  height: 1em;
+  line-height: 0.8;
 }
 
 .levelSelect {
@@ -1037,6 +1243,97 @@
   cursor: pointer;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 8px;
+}
+
+.presentationRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 8px;
+}
+
+.iconThumbnail {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.iconPickerPanel {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(480px, calc(100vh - 32px));
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #bbb;
+  background: #fff;
+  color: #222;
+  font:
+    12px Inter,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  text-align: left;
+  box-shadow: 0 4px 16px #0003;
+}
+
+.iconCategories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.iconCategories button {
+  padding: 4px 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.iconCategories button[aria-selected="true"] {
+  background: var(--color-depth);
+  color: #fff;
+}
+
+.iconPickerPanel input {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.iconGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.iconGrid button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 2px;
+  overflow-wrap: anywhere;
+}
+
+.iconGrid button[aria-pressed="true"] {
+  outline: 2px solid #222;
+}
+
+.presentationLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-depth);
 }
 
 .nameInput {
@@ -1172,6 +1469,27 @@
   color: rgb(35 7 75 / 65%);
 }
 
+@container (max-width: 320px) {
+  .entryTopline,
+  .entrySubline {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .entryMetaInput {
+    text-align: left;
+  }
+
+  .dateFields {
+    grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+    justify-content: start;
+  }
+
+  .dateInput {
+    width: 100%;
+  }
+}
+
 .bulletEditList {
   display: flex;
   flex-direction: column;
@@ -1237,6 +1555,36 @@
   font-size: 9px;
 }
 
+.linkAction {
+  display: none;
+}
+
+.blockContent:not(:has(.columnsEditor)):focus-within .linkAction {
+  display: inline-flex;
+}
+
+.linkEditList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.linkEditRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) max-content;
+  align-items: center;
+  gap: 3px;
+  padding-left: 8px;
+}
+
+.linkHint {
+  margin-left: 20px;
+  color: var(--color-structure);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+}
+
 .paginationProbe {
   position: fixed;
   top: 0;
@@ -1263,6 +1611,29 @@
   background: var(--color-surface-2);
 }
 
+.pdfExportPages {
+  display: grid;
+  gap: 24px;
+}
+
+.pdfExportPages figure {
+  min-width: 0;
+  margin: 0;
+}
+
+.pdfExportPages figcaption {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pdfExportPages canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: white;
+}
+
 .addQuickButton {
   display: grid;
   width: 10px;
@@ -1282,6 +1653,95 @@
   background: rgb(35 7 75 / 15%);
 }
 
+.imageBlockEdit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.imagePreview {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-1);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line);
+  overflow: hidden;
+}
+
+.imagePreview img {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+}
+
+.imagePlaceholder {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.imageInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.imageSettings {
+  color: var(--muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+}
+
+.imageSettings summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.imageSettings[open] summary {
+  margin-bottom: 8px;
+}
+
+.imageSizeInputs {
+  display: flex;
+  gap: 12px;
+}
+
+.fileInput {
+  display: none;
+}
+
+.imageUploadButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  background: var(--color-surface-2);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-md);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.imageUploadButton:hover {
+  border-color: var(--accent);
+  background: var(--color-surface-3);
+}
+
+.imageUploadButton .actionIcon {
+  width: 20px;
+  height: 20px;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1295,6 +1755,45 @@
 
   100% {
     transform: translateX(440%);
+  }
+}
+
+.mixedBodyRow {
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 180px) minmax(0, 1fr);
+  gap: 0 24px;
+  align-items: start;
+}
+
+.mixedBodyRowFlipped {
+  grid-template-columns: minmax(0, 1fr) var(--sidebar-width, 180px);
+}
+
+@media (max-width: 900px) {
+  .pagePreview,
+  .pageSurface {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pageSurface {
+    padding: 32px;
+  }
+
+  .pageEstimate {
+    flex-wrap: wrap;
+  }
+
+  .columnsEditor {
+    grid-template-columns: 1fr;
+  }
+  .mixedBodyRow,
+  .mixedBodyRowFlipped {
+    grid-template-columns: 1fr;
+  }
+
+  .profileHeaderGrid {
+    grid-template-columns: 1fr;
   }
 }
 

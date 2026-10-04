@@ -89,7 +89,7 @@ describe("resume schema", () => {
     );
   });
 
-  it("provides the A4 renderer with domain blocks and no Notion payload", () => {
+  it("provides the A4 renderer with sidebar domain blocks and no Notion payload", () => {
     const model = createA4DocumentModel({
       ...englishSampleResume,
       layoutBlocks: [
@@ -98,7 +98,9 @@ describe("resume schema", () => {
       ]
     });
 
-    expect(model.blocks.every((block) => block.zone !== "sidebar")).toBe(true);
+    expect(model.blocks).toContainEqual(
+      expect.objectContaining({ id: "future-sidebar", zone: "sidebar" })
+    );
     expect(containsForbiddenNotionKeys(model)).toBe(false);
   });
 });
