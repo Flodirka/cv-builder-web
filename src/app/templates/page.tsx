@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { builtInContentTemplates, createResumeFromContentTemplate } from "@/resume";
-import { ResumePrintDocument } from "@/templates";
+import { A4PreviewDocument } from "@/templates";
 import { ScaledPrintPreview } from "@/app/editor/ScaledPrintPreview";
 import styles from "./classic-compact/page.module.css";
 
@@ -42,7 +42,7 @@ export default function ContentTemplatePreviewPage() {
                 </header>
                 <div className={styles.pageFrame}>
                   <ScaledPrintPreview>
-                    <ResumePrintDocument resume={resume} title={template.name} />
+                    <A4PreviewDocument resume={resume} title={template.name} />
                   </ScaledPrintPreview>
                 </div>
               </section>

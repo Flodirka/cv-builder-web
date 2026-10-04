@@ -1,7 +1,12 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { resumeBlockSchema, resumeSchema, type ResumeBlock } from "@/resume";
+import {
+  builtInContentTemplates,
+  resumeBlockSchema,
+  resumeSchema,
+  type ResumeBlock
+} from "@/resume";
 import {
   addBlockKindsForZone,
   BlockEditor,
@@ -14,10 +19,15 @@ import {
   findMoveTarget,
   getAutoResizeTextareaHeight,
   getClassicCompactPageCount,
+  getCustomColumnLayout,
+  getEditorZones,
   hasClassicCompactEditorContent,
   insertBlockAfter,
+  moveBlockToZone,
   moveToIndexWithinZone,
   moveWithinZone,
+  replaceFirstTextOccurrence,
+  replaceLinkLabelInEntry,
   restoreDeletedBlock,
   updateEditorResume
 } from "./BlockEditor";
@@ -63,6 +73,23 @@ const blocks: ResumeBlock[] = [
 ];
 
 describe("BlockEditor helpers", () => {
+  it.each(["Split right", "Split left"])("edits %s in the renderer's row order", (name) => {
+    const template = builtInContentTemplates.find((candidate) => candidate.name === name)!;
+    const html = renderToStaticMarkup(
+      createElement(BlockEditor, {
+        initialPersonName: "Alex Doe",
+        initialBlocks: template.blocks
+      })
+    );
+    const editor = html.split('aria-label="Editable A4 resume page"')[1].split("</article>")[0];
+    expect(editor.match(/columnsEditor(?:\s|_)/g)).toHaveLength(1);
+    const experience = editor.indexOf('value="Experience"');
+    const skills = editor.indexOf('value="Skills"');
+    expect(editor.indexOf('value="Summary"')).toBeLessThan(Math.min(experience, skills));
+    expect(editor.indexOf('value="Education"')).toBeGreaterThan(Math.max(experience, skills));
+    expect(skills < experience).toBe(name.endsWith("left"));
+    expect(editor).toContain('aria-label="Heading icon"');
+  });
   it("creates valid manual resume blocks", () => {
     const manualBlocks = [
       createManualBlock("heading", "header", "manual-heading"),
@@ -117,8 +144,47 @@ describe("BlockEditor helpers", () => {
     expect(moveToIndexWithinZone(blocks, 3, 0)).toBe(blocks);
   });
 
+  it("moves blocks into a target column and keeps their new zone", () => {
+    expect(moveBlockToZone(blocks, 3, "sidebar", 2).map((block) => [block.id, block.zone])).toEqual(
+      [
+        ["h1", "header"],
+        ["p1", "header"],
+        ["b1", "sidebar"],
+        ["h2", "main"],
+        ["f1", "footer"]
+      ]
+    );
+  });
+
   it("exposes only header and main zones in the classic-compact editor", () => {
     expect(classicCompactEditorZones).toEqual(["header", "main"]);
+  });
+
+  it("keeps one full block menu on an empty document and preserves main after a header block", () => {
+    expect(getEditorZones([])).toEqual(["main"]);
+    expect(getEditorZones([blocks[0]])).toEqual(["header", "main"]);
+  });
+
+  it("keeps empty header and sidebar zones available for a custom two-column layout", () => {
+    expect(getCustomColumnLayout([], "two-column")).toBe("two-column");
+    expect(getEditorZones([], "two-column")).toEqual(["header", "sidebar", "main"]);
+    expect(getEditorZones([], "two-column")).not.toContain("footer");
+  });
+
+  it("keeps a link label and its displayed text in sync", () => {
+    expect(replaceFirstTextOccurrence("See my Portfolio", "Portfolio", "Work")).toBe("See my Work");
+    expect(replaceFirstTextOccurrence("See my work", "Portfolio", "Work")).toBe("See my work");
+    expect(
+      replaceLinkLabelInEntry(
+        { title: "Portfolio", description: "Portfolio case studies", bullets: ["Portfolio"] },
+        "Portfolio",
+        "Selected work"
+      )
+    ).toMatchObject({
+      title: "Selected work",
+      description: "Portfolio case studies",
+      bullets: ["Portfolio"]
+    });
   });
 
   it("estimates A4 page count from classic-compact content height", () => {
@@ -126,6 +192,76 @@ describe("BlockEditor helpers", () => {
     expect(getClassicCompactPageCount(1043)).toBe(1);
     expect(getClassicCompactPageCount(1044)).toBe(2);
     expect(getClassicCompactPageCount(2086)).toBe(2);
+  });
+
+  it("keeps valid links and drops incomplete link rows when cleaning blocks", () => {
+    const cleaned = cleanBlocks([
+      {
+        id: "entry-1",
+        type: "entry",
+        zone: "main",
+        entry: {
+          title: "Project",
+          bullets: [],
+          links: [
+            { label: "GitHub", url: "https://github.com/example" },
+            { label: "Draft", url: "" }
+          ]
+        },
+        visible: true
+      },
+      {
+        id: "contact",
+        type: "paragraph",
+        zone: "header",
+        text: "Portfolio",
+        textLinks: [
+          { label: "Portfolio", url: "https://portfolio.example.test" },
+          { label: "", url: "https://orphan.example.test" }
+        ],
+        visible: true
+      }
+    ]);
+
+    expect(cleaned[0]).toMatchObject({
+      entry: { links: [{ label: "GitHub", url: "https://github.com/example" }] }
+    });
+    expect(cleaned[1]).toMatchObject({
+      textLinks: [{ label: "Portfolio", url: "https://portfolio.example.test" }]
+    });
+  });
+
+  it("renders link fields for text blocks and entries", () => {
+    const html = renderToStaticMarkup(
+      createElement(BlockEditor, {
+        initialPersonName: "Editor QA",
+        initialBlocks: [
+          {
+            id: "contact",
+            type: "paragraph",
+            zone: "header",
+            text: "Portfolio",
+            textLinks: [{ label: "Portfolio", url: "https://portfolio.example.test" }],
+            visible: true
+          },
+          {
+            id: "entry-1",
+            type: "entry",
+            zone: "main",
+            entry: {
+              title: "Project",
+              bullets: [],
+              links: [{ label: "GitHub", url: "https://github.com/example" }]
+            },
+            visible: true
+          }
+        ]
+      })
+    );
+
+    expect(html).toContain('value="Portfolio"');
+    expect(html).toContain("https://portfolio.example.test");
+    expect(html).toContain("https://github.com/example");
   });
 
   it("renders long bullet content in wrapping textareas", () => {
@@ -207,19 +343,31 @@ describe("BlockEditor helpers", () => {
     expect(hasClassicCompactEditorContent([blocks[4]])).toBe(false);
   });
 
-  it("offers only zone-compatible block kinds", () => {
-    expect(addBlockKindsForZone("header").map((kind) => kind.id)).toEqual([
-      "headline",
-      "header_text"
-    ]);
-    expect(addBlockKindsForZone("main").map((kind) => kind.id)).toEqual([
-      "section_heading",
-      "text",
-      "labeled_text",
-      "bullet_list",
-      "entry",
-      "divider"
-    ]);
+  it("makes every block kind available in every region for free composition", () => {
+    for (const zone of ["header", "sidebar", "main", "footer"] as const) {
+      expect(addBlockKindsForZone(zone).map((kind) => kind.id)).toEqual([
+        "headline",
+        "header_text",
+        "section_heading",
+        "text",
+        "labeled_text",
+        "bullet_list",
+        "entry",
+        "divider",
+        "image",
+        "columns",
+        "table",
+        "page_break"
+      ]);
+    }
+  });
+
+  it("creates image blocks in the requested zone", () => {
+    expect(createManualBlock("image", "sidebar", "photo")).toMatchObject({
+      id: "photo",
+      type: "image",
+      zone: "sidebar"
+    });
   });
 
   it("restores a deleted block at its previous index", () => {
@@ -479,16 +627,18 @@ describe("BlockEditor helpers", () => {
     expect(html).toContain("Check finished PDF");
     expect(html).toContain('aria-label="Help and privacy"');
     expect(html).toContain('aria-label="Choose a template"');
+    expect(html).not.toContain('aria-label="Choose column layout"');
     expect(html).toContain(">Connect agent<");
     expect(html).toContain('aria-labelledby="connect-agent-heading"');
     expect(html).toContain("How it works");
     expect(html).toContain('aria-label="Help and privacy"');
     expect(html).toContain(">Custom</option>");
-    expect(html).toContain(">Classic Compact</option>");
-    expect(html).toContain(">Simple ATS</option>");
+    expect(html).toContain(">Compact</option>");
+    expect(html).toContain(">Standard</option>");
     expect(html).toContain("A4 editor preview");
     expect(html).toContain('aria-label="Editable A4 resume page"');
     expect(html).toContain("This resume does not have any content yet.");
+    expect([...html.matchAll(/>Add block</g)]).toHaveLength(1);
     expect(html).not.toContain('aria-label="Document language"');
     expect(html).not.toContain("Blank resume");
     expect(html).toContain("PDF filename");

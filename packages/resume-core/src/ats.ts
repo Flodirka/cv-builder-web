@@ -1,5 +1,6 @@
 import type { ResumeBlock, ResumeEntry } from "./schema";
 import { toSafeHttpUrl } from "./safe-url";
+import { flattenResumeBlocks } from "./block-model";
 
 export type AtsIssueSeverity = "error" | "warning";
 
@@ -47,6 +48,10 @@ const normalizeHeading = (value: string) =>
 
 const blockText = (block: ResumeBlock) => {
   switch (block.type) {
+    case "table":
+      return block.rows.map((row) => row.join(" ")).join(" ");
+    case "page_break":
+      return "";
     case "heading":
     case "paragraph":
       return block.text;
@@ -67,6 +72,8 @@ const blockText = (block: ResumeBlock) => {
         .join(" ");
     case "divider":
     case "spacer":
+    case "image":
+    case "columns":
       return "";
   }
 };
@@ -225,7 +232,7 @@ const checkEntry = (block: Extract<ResumeBlock, { type: "entry" }>, issues: AtsI
 };
 
 export function analyzeResumeBlocks(blocks: ResumeBlock[]): AtsReport {
-  const visibleBlocks = blocks.filter((block) => block.visible);
+  const visibleBlocks = flattenResumeBlocks(blocks);
   const issues: AtsIssue[] = [];
   const fallbackBlockId = visibleBlocks[0]?.id;
   const headerBlocks = visibleBlocks.filter((block) => block.zone === "header");

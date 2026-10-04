@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { englishSampleResume, russianSampleResume } from "@/resume";
-import { createA4DocumentModel, ResumePrintDocument } from "./index";
+import { createA4DocumentModel, A4PreviewDocument } from "./index";
 
 describe("A4 resume document", () => {
   it("renders the English fixture with section hierarchy and entry metadata", () => {
-    const html = renderToStaticMarkup(<ResumePrintDocument resume={englishSampleResume} />);
+    const html = renderToStaticMarkup(<A4PreviewDocument resume={englishSampleResume} />);
 
     expect(html).toContain("Alex Doe");
     expect(html).toContain("Example Studio");
@@ -14,7 +14,7 @@ describe("A4 resume document", () => {
   });
 
   it("renders Cyrillic text from the Russian fixture", () => {
-    const html = renderToStaticMarkup(<ResumePrintDocument resume={russianSampleResume} />);
+    const html = renderToStaticMarkup(<A4PreviewDocument resume={russianSampleResume} />);
 
     expect(html).toContain("Иван Иванов");
     expect(html).toContain("Геймдизайнер");
@@ -23,7 +23,7 @@ describe("A4 resume document", () => {
 
   it("renders entry title before subtitle", () => {
     const html = renderToStaticMarkup(
-      <ResumePrintDocument
+      <A4PreviewDocument
         resume={{
           ...englishSampleResume,
           layoutBlocks: [
@@ -53,7 +53,7 @@ describe("A4 resume document", () => {
 
   it("renders labeled text with a bold label", () => {
     const html = renderToStaticMarkup(
-      <ResumePrintDocument
+      <A4PreviewDocument
         resume={{
           ...englishSampleResume,
           layoutBlocks: [
@@ -75,7 +75,7 @@ describe("A4 resume document", () => {
 
   it("renders imported text links as safe clickable anchors", () => {
     const html = renderToStaticMarkup(
-      <ResumePrintDocument
+      <A4PreviewDocument
         resume={{
           ...englishSampleResume,
           layoutBlocks: [
@@ -105,7 +105,7 @@ describe("A4 resume document", () => {
 
   it("does not create clickable anchors for unsafe link protocols", () => {
     const html = renderToStaticMarkup(
-      <ResumePrintDocument
+      <A4PreviewDocument
         resume={{
           ...englishSampleResume,
           layoutBlocks: [
@@ -127,7 +127,82 @@ describe("A4 resume document", () => {
     expect(html).not.toContain("<a ");
   });
 
-  it("keeps unsupported sidebar blocks out of the current one-column model", () => {
+  it("renders a safe uploaded image data URL", () => {
+    const image =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL6xQAAAABJRU5ErkJggg==";
+    const html = renderToStaticMarkup(
+      <A4PreviewDocument
+        resume={{
+          ...englishSampleResume,
+          layoutBlocks: [
+            {
+              id: "photo",
+              type: "image",
+              zone: "header",
+              visible: true,
+              src: image,
+              alt: "Fictional profile photo"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(html).toContain(`src="${image}"`);
+    expect(html).toContain('alt="Fictional profile photo"');
+  });
+
+  it("places a profile photo beside all header fields", () => {
+    const image =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL6xQAAAABJRU5ErkJggg==";
+    const html = renderToStaticMarkup(
+      <A4PreviewDocument
+        resume={{
+          ...englishSampleResume,
+          layout: "two-column",
+          layoutBlocks: [
+            {
+              id: "name",
+              type: "heading",
+              zone: "header",
+              level: 1,
+              text: "Profile Name",
+              visible: true
+            },
+            {
+              id: "photo",
+              type: "image",
+              zone: "header",
+              visible: true,
+              src: image,
+              alt: "Fictional profile photo",
+              width: 80,
+              height: 80
+            },
+            {
+              id: "role",
+              type: "paragraph",
+              zone: "header",
+              text: "Profile role",
+              visible: true
+            },
+            {
+              id: "bio",
+              type: "paragraph",
+              zone: "header",
+              text: "Profile bio",
+              visible: true
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(html.indexOf(`src="${image}"`)).toBeLessThan(html.indexOf(">Profile Name<"));
+    expect(html.indexOf(">Profile role<")).toBeLessThan(html.indexOf(">Profile bio<"));
+  });
+
+  it("keeps sidebar blocks in the two-column document model", () => {
     const model = createA4DocumentModel({
       ...englishSampleResume,
       layoutBlocks: [
@@ -136,6 +211,8 @@ describe("A4 resume document", () => {
       ]
     });
 
-    expect(model.blocks.every((block) => block.zone !== "sidebar")).toBe(true);
+    expect(model.blocks).toContainEqual(
+      expect.objectContaining({ id: "sidebar-note", zone: "sidebar" })
+    );
   });
 });

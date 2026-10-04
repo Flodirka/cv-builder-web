@@ -6,6 +6,25 @@ import {
   type ResumeZone
 } from "./schema";
 
+const imageBlock = (
+  id: string,
+  src: string,
+  alt: string,
+  zone: ResumeZone,
+  width?: number,
+  height?: number
+): ResumeBlock => ({
+  id,
+  type: "image",
+  zone,
+  src,
+  alt,
+  width,
+  height,
+  visible: true,
+  textLinks: []
+});
+
 type SectionKey =
   | "summary"
   | "experience"
@@ -16,6 +35,15 @@ type SectionKey =
   | "certificates";
 
 const sectionTitles: Record<Resume["language"], Record<SectionKey, string>> = {
+  ja: {
+    summary: "自己紹介",
+    experience: "職歴",
+    education: "学歴",
+    projects: "プロジェクト",
+    skills: "スキル",
+    languages: "語学",
+    certificates: "免許・資格"
+  },
   en: {
     summary: "Summary",
     experience: "Experience",
@@ -109,6 +137,13 @@ const addEntrySection = (
 
 export const buildDefaultResumeBlocks = (resume: Resume): ResumeBlock[] => {
   const blocks: ResumeBlock[] = [headingBlock("person-name", resume.person.fullName, 1, "header")];
+
+  if (resume.person.photo) {
+    blocks.push(
+      imageBlock("person-photo", resume.person.photo, resume.person.fullName, "header", 120, 150)
+    );
+  }
+
   const contact = contactLine(resume);
 
   if (resume.person.headline) {
@@ -174,3 +209,74 @@ export const buildDefaultResumeBlocks = (resume: Resume): ResumeBlock[] => {
 
 export const getResumeBlocks = (resume: Resume): ResumeBlock[] =>
   resume.layoutBlocks.length > 0 ? resume.layoutBlocks : buildDefaultResumeBlocks(resume);
+
+export const getHeadingPresentation = (block: Extract<ResumeBlock, { type: "heading" }>) => ({
+  underline: block.underline ?? block.level === 2,
+  uppercase: block.uppercase ?? block.level === 2,
+  bold: block.bold ?? true
+});
+
+export type BodyRow =
+  | { kind: "full"; blocks: ResumeBlock[] }
+  | {
+      kind: "mixed";
+      sidebarBlocks: ResumeBlock[];
+      mainBlocks: ResumeBlock[];
+      sidebarFirst: boolean;
+    };
+
+const isBodyZone = (block: ResumeBlock) => block.zone === "sidebar" || block.zone === "main";
+
+// Groups visible body blocks (sidebar + main, document order) into render rows for the
+// single A4 renderer. Rule: a body that contains sidebar blocks is split into sections
+// on divider blocks — the dividers are consumed as row separators and are not rendered.
+// A section with both zones becomes one mixed row (column order follows the first block);
+// a single-zone section becomes full-width rows. Bodies without sidebar blocks render
+// exactly as before, dividers included.
+export const groupBodyRows = (blocks: ResumeBlock[], forEditing = false): BodyRow[] => {
+  const body = blocks.filter((block) => (block.visible || forEditing) && isBodyZone(block));
+  if (!body.some((block) => block.zone === "sidebar")) {
+    return body.length > 0 ? [{ kind: "full", blocks: body }] : [];
+  }
+  const sections: ResumeBlock[][] = [[]];
+  for (const block of body) {
+    if (block.type === "divider") {
+      if (forEditing) sections.push([block]);
+      sections.push([]);
+      continue;
+    }
+    sections[sections.length - 1]?.push(block);
+  }
+  return sections.flatMap((section): BodyRow[] => {
+    if (section.length === 0) return [];
+    const sidebarBlocks = section.filter((block) => block.zone === "sidebar");
+    const mainBlocks = section.filter((block) => block.zone === "main");
+    if (sidebarBlocks.length > 0 && mainBlocks.length > 0) {
+      return [
+        {
+          kind: "mixed",
+          sidebarBlocks,
+          mainBlocks,
+          sidebarFirst: section[0]?.zone !== "main"
+        }
+      ];
+    }
+    return [{ kind: "full", blocks: section }];
+  });
+};
+
+// Containers retain their own layout; their descendants follow column reading order.
+export const flattenResumeBlocks = (
+  blocks: ResumeBlock[],
+  includeHidden = false,
+  inheritedZone?: ResumeZone
+): ResumeBlock[] =>
+  blocks
+    .filter((block) => includeHidden || block.visible)
+    .flatMap((block) =>
+      block.type === "columns"
+        ? block.columns.flatMap((column) =>
+            flattenResumeBlocks(column.blocks, includeHidden, inheritedZone ?? block.zone)
+          )
+        : [inheritedZone ? { ...block, zone: inheritedZone } : block]
+    );

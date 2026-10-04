@@ -2,7 +2,8 @@ export const PUBLIC_FILE_LIMITS = {
   json: { bytes: 2 * 1024 * 1024, label: "2 MiB", displayName: "JSON" },
   markdown: { bytes: 1024 * 1024, label: "1 MiB", displayName: "Markdown" },
   plainText: { bytes: 512 * 1024, label: "512 KiB", displayName: "plain-text" },
-  pdf: { bytes: 20 * 1024 * 1024, label: "20 MiB", displayName: "PDF" }
+  pdf: { bytes: 20 * 1024 * 1024, label: "20 MiB", displayName: "PDF" },
+  photo: { bytes: 200 * 1024, label: "200 KiB", displayName: "photo" }
 } as const;
 
 export const PDF_INSPECTION_LIMITS = {
