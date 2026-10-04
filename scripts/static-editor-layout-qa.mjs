@@ -180,7 +180,7 @@ try {
   );
   await task.destroy();
   await page
-    .locator('[aria-label="PDF export preview"] article')
+    .locator('[aria-label="PDF export preview"] figure')
     .first()
     .screenshot({ path: "tmp/static-layout-qa/custom-columns-a4.png" });
   await closeExport();
