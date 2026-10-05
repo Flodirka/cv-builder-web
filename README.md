@@ -1,4 +1,39 @@
-# CV Builder Web
+<p align="center">
+  <img src="assets/readme/hero-web.svg" alt="CV Builder: your resume, your browser" width="1200">
+</p>
+
+<h1 align="center">CV Builder</h1>
+
+<p align="center">Create, edit and export your resume. Your local draft stays in your browser.</p>
+
+<p align="center">
+  <a href="https://flodirka.github.io/cv-builder-web/"><img src="assets/readme/open-editor.svg" alt="Open CV Builder editor" height="44"></a>
+  <a href="https://github.com/Flodirka/cv-builder-plugin#install"><img src="assets/readme/install-plugin.svg" alt="Install CV Builder plugin" height="44"></a>
+  <a href="#support-the-project"><img src="assets/readme/support.svg" alt="Support the project" height="44"></a>
+</p>
+
+<p align="center"><a href="#get-started">Get started</a> · <a href="#features">Features</a> · <a href="#connect-an-agent">Connect an agent</a> · <a href="#privacy-model">Privacy</a></p>
+
+## Get started
+
+1. [Open CV Builder](https://flodirka.github.io/cv-builder-web/).
+2. Choose a template or start with Custom, then replace the example facts with your own.
+3. Edit your blocks, check the preview, and choose **Export → Download PDF**.
+
+![CV Builder with the fictional Alex Doe resume in the Standard template](assets/readme/editor-preview.png)
+
+_The published editor with a fictional sample resume. Editing and PDF export run in your browser._
+
+## Features
+
+| Build your document                                                    | Keep control of your data                           |
+| ---------------------------------------------------------------------- | --------------------------------------------------- |
+| Fifteen templates, including two-column layouts and a Japanese example | Editing, local drafts and PDF export in the browser |
+| English, Russian and Japanese text with bundled fonts                  | No account, analytics or advertising                |
+| Editable columns, tables, photos and heading icons                     | Markdown and JSON import/export                     |
+| A4 text/vector PDF with a preview of every page                        | Local ATS preflight and finished-PDF inspection     |
+
+## About the editor
 
 CV Builder Web is a public, local-first resume editor with an optional Connected Builder handoff
 for MCP agents. Open the published editor: [CV Builder Web](https://flodirka.github.io/cv-builder-web/).
@@ -63,10 +98,11 @@ Your experience{zone=main}
 ::: endcolumns
 ```
 
-The Europe (Europass sections), Australia, and USA (Chronological) templates provide editable
-section structures. They do not certify national-format compliance or official Europass import.
-All templates use white A4; Letter, decorative backgrounds, form tables, and CJK PDF fonts are
-not included in this candidate.
+Europe provides editable Europass-style sections; Australia includes relevant licences. Use
+Minimal or Standard for a general USA resume. These examples do not certify national-format
+compliance or provide official Europass import. All templates use white A4. Letter and decorative
+page backgrounds are not supported; Japanese fonts are bundled, while complete Chinese and Korean
+font coverage is not included.
 
 ## Privacy model
 
@@ -164,6 +200,13 @@ reporting a vulnerability, and [CONTRIBUTING.md](CONTRIBUTING.md) before opening
 
 ## Support the project
 
-CV Builder is free and account-free. Voluntary support links, if the operator provides them,
-live in the plugin's [SUPPORT.md](https://github.com/Flodirka/cv-builder-plugin/blob/main/SUPPORT.md).
-Support never changes the product: no accounts, no perks, no feature gates.
+CV Builder is free and account-free. Voluntary support helps cover hosting and development time.
+
+<p align="center">
+  <a href="https://boosty.to/gdview_gdbrain/donate"><img src="assets/readme/boosty.svg" alt="Support on Boosty" height="44"></a>
+  <a href="https://www.patreon.com/15806620/join"><img src="assets/readme/patreon.svg" alt="Support on Patreon" height="44"></a>
+  <a href="https://dalink.to/flodirka"><img src="assets/readme/donation-alerts.svg" alt="Support on DonationAlerts" height="44"></a>
+</p>
+
+See the plugin's [SUPPORT.md](https://github.com/Flodirka/cv-builder-plugin/blob/main/SUPPORT.md)
+for details. Support never changes the product: no accounts, no perks, no feature gates.
