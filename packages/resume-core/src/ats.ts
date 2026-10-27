@@ -1,5 +1,6 @@
 import type { ResumeBlock, ResumeEntry } from "./schema";
 import { toSafeHttpUrl } from "./safe-url";
+import { flattenResumeBlocks } from "./block-model";
 
 export type AtsIssueSeverity = "error" | "warning";
 
@@ -47,6 +48,10 @@ const normalizeHeading = (value: string) =>
 
 const blockText = (block: ResumeBlock) => {
   switch (block.type) {
+    case "table":
+      return block.rows.map((row) => row.join(" ")).join(" ");
+    case "page_break":
+      return "";
     case "heading":
     case "paragraph":
       return block.text;
@@ -67,16 +72,28 @@ const blockText = (block: ResumeBlock) => {
         .join(" ");
     case "divider":
     case "spacer":
+    case "image":
+    case "columns":
       return "";
   }
 };
 
 const hasLetters = (value: string) => /\p{L}/u.test(value);
 
+const trimCandidateEdges = (value: string, leading: string, trailing: string) => {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && leading.includes(value[start])) start += 1;
+  while (end > start && trailing.includes(value[end - 1])) end -= 1;
+
+  return value.slice(start, end);
+};
+
 const emailCandidates = (value: string) =>
   value
     .split(/\s+/u)
-    .map((part) => part.replace(/^[<(\[{]+|[>),.;\]}]+$/gu, ""))
+    .map((part) => trimCandidateEdges(part, "<([{", ">),.;]}"))
     .filter((part) => part.includes("@"));
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(value);
@@ -90,7 +107,7 @@ const isValidPhone = (value: string) => {
 
 const urlCandidates = (value: string) =>
   (value.match(/(?:https?:\/\/|www\.)[^\s<>()]+/giu) ?? []).map((candidate) =>
-    candidate.replace(/[),.;\]}]+$/gu, "")
+    trimCandidateEdges(candidate, "", "),.;]}")
   );
 
 const isValidUrl = (value: string) => {
@@ -215,7 +232,7 @@ const checkEntry = (block: Extract<ResumeBlock, { type: "entry" }>, issues: AtsI
 };
 
 export function analyzeResumeBlocks(blocks: ResumeBlock[]): AtsReport {
-  const visibleBlocks = blocks.filter((block) => block.visible);
+  const visibleBlocks = flattenResumeBlocks(blocks);
   const issues: AtsIssue[] = [];
   const fallbackBlockId = visibleBlocks[0]?.id;
   const headerBlocks = visibleBlocks.filter((block) => block.zone === "header");

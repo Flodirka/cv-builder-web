@@ -2,6 +2,7 @@
 
 import { useState, type ChangeEvent } from "react";
 import {
+  builtInContentTemplates,
   importResumeJson,
   importResumeMarkdown,
   importResumePlainText,
@@ -143,6 +144,24 @@ export function DocumentInterchange({ open, onClose, onReplace }: DocumentInterc
         </div>
 
         <div className={styles.actions}>
+          <details>
+            <summary>Download Markdown templates</summary>
+            <ul>
+              {builtInContentTemplates.map((template) => (
+                <li key={template.name}>
+                  <a
+                    download
+                    href={`templates/${template.name
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "-")
+                      .replace(/-$/, "")}.md`}
+                  >
+                    {template.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
           <label className={styles.fileButton}>
             Import Markdown
             <input
