@@ -18,7 +18,7 @@ const staticContentSecurityPolicy = [
   "font-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
-  "connect-src 'self' data:",
+  "connect-src 'self' data: https://cv-builder-relay.flodirka.workers.dev",
   "worker-src 'self' blob:",
   "child-src 'self' blob:"
 ].join("; ");

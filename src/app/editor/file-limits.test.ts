@@ -12,7 +12,8 @@ describe("public file limits", () => {
       json: { bytes: 2_097_152, label: "2 MiB", displayName: "JSON" },
       markdown: { bytes: 1_048_576, label: "1 MiB", displayName: "Markdown" },
       plainText: { bytes: 524_288, label: "512 KiB", displayName: "plain-text" },
-      pdf: { bytes: 20_971_520, label: "20 MiB", displayName: "PDF" }
+      pdf: { bytes: 20_971_520, label: "20 MiB", displayName: "PDF" },
+      photo: { bytes: 204_800, label: "200 KiB", displayName: "photo" }
     });
     expect(PDF_INSPECTION_LIMITS).toEqual({
       pages: 50,
