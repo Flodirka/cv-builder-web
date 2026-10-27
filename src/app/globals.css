@@ -114,3 +114,15 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+@font-face {
+  font-family: "Zen Kaku Gothic CV Builder";
+  src: url("/fonts/pt-serif-pdf/ZenKakuGothicNew-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Zen Kaku Gothic CV Builder";
+  src: url("/fonts/pt-serif-pdf/ZenKakuGothicNew-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
