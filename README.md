@@ -7,9 +7,9 @@
 <p align="center">Create, edit and export your resume. Your local draft stays in your browser.</p>
 
 <p align="center">
-  <a href="https://flodirka.github.io/cv-builder-web/"><img src="assets/readme/open-editor.svg" alt="Open CV Builder editor" height="44"></a>
-  <a href="https://github.com/Flodirka/cv-builder-plugin#install"><img src="assets/readme/install-plugin.svg" alt="Install CV Builder plugin" height="44"></a>
-  <a href="#support-the-project"><img src="assets/readme/support.svg" alt="Support the project" height="44"></a>
+  <a href="https://flodirka.github.io/cv-builder-web/"><img src="assets/readme/open-editor.svg" alt="Open CV Builder editor" height="36"></a>
+  <a href="https://github.com/Flodirka/cv-builder-plugin#install"><img src="assets/readme/install-plugin.svg" alt="Install CV Builder plugin" height="36"></a>
+  <a href="#support-the-project"><img src="assets/readme/support.svg" alt="Support the project" height="36"></a>
 </p>
 
 <p align="center"><a href="#get-started">Get started</a> · <a href="#features">Features</a> · <a href="#connect-an-agent">Connect an agent</a> · <a href="#privacy-model">Privacy</a></p>
@@ -203,10 +203,12 @@ reporting a vulnerability, and [CONTRIBUTING.md](CONTRIBUTING.md) before opening
 CV Builder is free and account-free. Voluntary support helps cover hosting and development time.
 
 <p align="center">
-  <a href="https://boosty.to/gdview_gdbrain/donate"><img src="assets/readme/boosty.svg" alt="Support on Boosty" height="44"></a>
-  <a href="https://www.patreon.com/15806620/join"><img src="assets/readme/patreon.svg" alt="Support on Patreon" height="44"></a>
-  <a href="https://dalink.to/flodirka"><img src="assets/readme/donation-alerts.svg" alt="Support on DonationAlerts" height="44"></a>
+  <a href="https://boosty.to/gdview_gdbrain/donate"><img src="assets/readme/boosty.svg" alt="Support on Boosty" height="36"></a>
+  <a href="https://www.patreon.com/15806620/join"><img src="assets/readme/patreon.svg" alt="Support on Patreon" height="36"></a>
+  <a href="https://dalink.to/flodirka"><img src="assets/readme/donation-alerts.svg" alt="Support on DonationAlerts" height="36"></a>
 </p>
 
 See the plugin's [SUPPORT.md](https://github.com/Flodirka/cv-builder-plugin/blob/main/SUPPORT.md)
 for details. Support never changes the product: no accounts, no perks, no feature gates.
+
+[README asset notices](assets/readme/NOTICES.md) · Inter and Lucide.
