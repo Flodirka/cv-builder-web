@@ -174,7 +174,7 @@ try {
   await page.locator("#resume-json-import").setInputFiles(jsonPath);
   await page.getByRole("button", { name: "Replace current document" }).click();
 
-  await page.getByLabel("Choose a template").selectOption("Simple ATS");
+  await page.getByLabel("Choose a template").selectOption("Standard");
   await page.getByPlaceholder("Heading text").first().fill("Changed template name");
   await page.getByRole("button", { name: "Reset" }).click();
   await page

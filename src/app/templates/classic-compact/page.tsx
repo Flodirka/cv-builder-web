@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ResumePrintDocument } from "@/templates";
+import { A4PreviewDocument } from "@/templates";
 import { englishSampleResume, russianSampleResume } from "@/resume";
 import styles from "./page.module.css";
 
@@ -46,7 +46,7 @@ export default function ClassicCompactPreviewPage() {
                 <span className={styles.fixtureMeta}>Sample data · A4</span>
               </header>
               <div className={styles.pageFrame}>
-                <ResumePrintDocument resume={fixture.resume} title={fixture.title} />
+                <A4PreviewDocument resume={fixture.resume} title={fixture.title} />
               </div>
             </section>
           ))}

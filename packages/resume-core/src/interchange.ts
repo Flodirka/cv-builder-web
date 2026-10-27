@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { isSafeHttpUrl } from "./safe-url";
-import { resumeSchema, type Resume, type ResumeBlock, type ResumeLink } from "./schema";
+import { flattenResumeBlocks } from "./block-model";
+import { countResumeBlocks } from "./block-tree";
+import {
+  resumeIconSchema,
+  resumeSchema,
+  type Resume,
+  type ResumeBlock,
+  type ResumeLink,
+  type ResumeZone
+} from "./schema";
 
 export const RESUME_INTERCHANGE_SCHEMA_VERSION = "cv-builder/v1" as const;
 
@@ -40,10 +49,12 @@ type EntryField = (typeof entryFields)[number];
 const emptyResume = (
   language: Resume["language"],
   fullName: string,
-  blocks: ResumeBlock[]
+  blocks: ResumeBlock[],
+  layout?: Resume["layout"]
 ): Resume =>
   resumeSchema.parse({
     language,
+    layout,
     person: { fullName, links: [] },
     experience: [],
     education: [],
@@ -76,9 +87,85 @@ const escapeMarkdown = (value: string) =>
     .replaceAll("-", "\\-")
     .replaceAll("<", "\\<")
     .replaceAll(">", "\\>")
-    .replace(/\r?\n/g, " ");
+    .replace(/\r?\n/g, " ")
+    .replace(
+      /^:::(?=\s+(?:columns|column|endcolumn|endcolumns|table|endtable|pagebreak)\b)/,
+      "\\:::"
+    );
 
-const unescapeMarkdown = (value: string) => value.replace(/\\([\\[\]*<>_`~#+-])/g, "$1").trim();
+const blockAttributeGroup = /\s*\{([^{}]*)\}\s*$/;
+const alignValues = ["left", "center", "right"] as const;
+
+type ParsedBlockAttributes = {
+  text: string;
+  zone?: ResumeZone;
+  align?: (typeof alignValues)[number];
+  icon?: ResumeBlockIcon;
+  columns?: 1 | 2;
+  underline?: boolean;
+  uppercase?: boolean;
+  bold?: boolean;
+};
+
+type ResumeBlockIcon = NonNullable<Extract<ResumeBlock, { type: "heading" }>["icon"]>;
+
+const parseBlockAttributes = (value: string): ParsedBlockAttributes => {
+  const match = blockAttributeGroup.exec(value);
+  if (
+    !match ||
+    !/^(?:(?:zone|align|icon|columns|underline|uppercase|bold)=[\w:-]+\s*)+$/.test(match[1])
+  ) {
+    return { text: value };
+  }
+
+  const attributes = new Map<string, string>();
+  for (const part of match[1].split(/\s+/)) {
+    const [key, rawValue] = part.split("=");
+    if (key && rawValue && !attributes.has(key)) attributes.set(key, rawValue);
+  }
+
+  const rawAlign = attributes.get("align");
+  const rawZone = attributes.get("zone");
+  const zone = ["header", "sidebar", "main", "footer"].find(
+    (candidate) => candidate === rawZone
+  ) as ResumeZone | undefined;
+  const align = alignValues.find((candidate) => candidate === rawAlign);
+  const rawIcon = attributes.get("icon");
+  const icon = resumeIconSchema.options.find((candidate) => candidate === rawIcon);
+  const rawColumns = attributes.get("columns");
+  const columns = rawColumns === "2" ? 2 : rawColumns === "1" ? 1 : undefined;
+
+  return {
+    text: value.slice(0, match.index).trimEnd(),
+    ...(zone ? { zone } : {}),
+    ...(align ? { align } : {}),
+    ...(icon ? { icon } : {}),
+    ...(columns ? { columns } : {}),
+    ...Object.fromEntries(
+      ["underline", "uppercase", "bold"].flatMap(
+        (key): Array<[string, boolean]> =>
+          attributes.get(key) === "true"
+            ? [[key, true]]
+            : attributes.get(key) === "false"
+              ? [[key, false]]
+              : []
+      )
+    )
+  };
+};
+
+const serializeBlockAttributes = (
+  attributes: Array<string | { key: string; value: string | number | boolean | undefined }>
+) => {
+  const parts = attributes
+    .map((attribute) =>
+      typeof attribute === "string" ? attribute : `${attribute.key}=${attribute.value}`
+    )
+    .filter((part) => !part.endsWith("=undefined"));
+  return parts.length > 0 ? `{${parts.join(" ")}}` : "";
+};
+
+const unescapeMarkdown = (value: string) => value.replace(/\\([\\[\]*<>_`~#+:|\-])/g, "$1").trim();
 
 const serializeLinkedText = (text: string, links?: ResumeLink[]) => {
   const safeLinks = (links ?? []).filter((link) => isSafeMarkdownUrl(link.url));
@@ -138,6 +225,8 @@ const fieldMatch = (line: string) => {
 };
 
 const isStructuralLine = (line: string) =>
+  /^:::\s*(?:columns|column|endcolumn|endcolumns|table|endtable|pagebreak)\b/.test(line) ||
+  /^!\[/.test(line) ||
   /^#{1,3}\s+/.test(line) ||
   /^[-*+]\s+/.test(line) ||
   /^\*\*.+?:\*\*\s*/.test(line) ||
@@ -185,13 +274,19 @@ const unsupportedSyntax = (line: string) => {
 const parseFrontmatter = (
   lines: string[],
   warnings: ImportWarning[]
-): { bodyStart: number; language?: Resume["language"]; error?: string } => {
+): {
+  bodyStart: number;
+  language?: Resume["language"];
+  layout?: Resume["layout"];
+  error?: string;
+} => {
   if (lines[0]?.trim() !== "---") return { bodyStart: 0 };
   const end = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
   if (end === -1) return { bodyStart: 0, error: "Markdown frontmatter is not closed with ---." };
 
   let schema: string | undefined;
   let language: Resume["language"] | undefined;
+  let layout: Resume["layout"] | undefined;
   for (let index = 1; index < end; index += 1) {
     const match = /^([a-zA-Z][\w-]*):\s*(.*)$/.exec(lines[index].trim());
     if (!match) {
@@ -203,8 +298,13 @@ const parseFrontmatter = (
       continue;
     }
     if (match[1] === "schema") schema = match[2];
-    else if (match[1] === "language" && (match[2] === "en" || match[2] === "ru")) {
+    else if (
+      match[1] === "language" &&
+      (match[2] === "en" || match[2] === "ru" || match[2] === "ja")
+    ) {
       language = match[2];
+    } else if (match[1] === "layout" && (match[2] === "one-column" || match[2] === "two-column")) {
+      layout = match[2];
     } else {
       warnings.push({
         code: "metadata",
@@ -220,10 +320,11 @@ const parseFrontmatter = (
       error: 'Markdown frontmatter must contain "schema: cv-builder/v1".'
     };
   }
-  return { bodyStart: end + 1, language };
+  return { bodyStart: end + 1, language, layout };
 };
 
-export function importResumeMarkdown(source: string): ResumeImportResult {
+export function importResumeMarkdown(source: string, nesting = 0): ResumeImportResult {
+  if (nesting > 16) return { ok: false, error: "Column nesting exceeds 16 levels." };
   if (!source.trim()) return { ok: false, error: "Markdown file is empty." };
 
   const lines = source
@@ -236,19 +337,32 @@ export function importResumeMarkdown(source: string): ResumeImportResult {
 
   const body = lines.slice(frontmatter.bodyStart);
   const detectedLanguage =
-    frontmatter.language ?? (/\p{Script=Cyrillic}/u.test(body.join("\n")) ? "ru" : "en");
+    frontmatter.language ??
+    (/\p{Script=Cyrillic}/u.test(body.join("\n"))
+      ? "ru"
+      : /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(body.join("\n"))
+        ? "ja"
+        : "en");
   const blocks: ResumeBlock[] = [];
   let mainStarted = false;
   let index = 0;
 
-  const addBlock = (block: Omit<ResumeBlock, "id" | "zone" | "visible">) => {
+  const addBlock = (
+    block: Omit<ResumeBlock, "id" | "zone" | "visible">,
+    zone?: ResumeBlock["zone"]
+  ) => {
     blocks.push({
       ...block,
       id: importBlockId(blocks.length),
-      zone: mainStarted ? "main" : "header",
+      zone: zone ?? (mainStarted ? "main" : "header"),
       visible: true
     } as ResumeBlock);
   };
+
+  const parseZoneAttribute = (value: string | undefined): ResumeBlock["zone"] | undefined =>
+    value === "header" || value === "sidebar" || value === "main" || value === "footer"
+      ? value
+      : undefined;
 
   while (index < body.length) {
     const rawLine = body[index];
@@ -259,14 +373,190 @@ export function importResumeMarkdown(source: string): ResumeImportResult {
       continue;
     }
 
+    const pageBreak = /^::: pagebreak\{zone=(header|sidebar|main|footer)\}$/.exec(line);
+    if (pageBreak) {
+      addBlock({ type: "page_break" }, pageBreak[1] as ResumeZone);
+      index += 1;
+      continue;
+    }
+    const table =
+      /^::: table\{zone=(header|sidebar|main|footer) widths=([^ }]+)(?: align=(left|center|right))?\}$/.exec(
+        line
+      );
+    if (table) {
+      const widths = table[2].split(",").map(Number);
+      const rows: string[][] = [];
+      let header = false;
+      index += 1;
+      while (index < body.length && body[index].trim() !== "::: endtable") {
+        const row = body[index].trim();
+        if (!row) {
+          index += 1;
+          continue;
+        }
+        if (!row.startsWith("|") || !row.endsWith("|"))
+          return { ok: false, error: "Table rows must start and end with |." };
+        const cells: string[] = [];
+        let cell = "";
+        for (let position = 1; position < row.length - 1; position += 1) {
+          const char = row[position];
+          if (char === "\\" && position + 1 < row.length - 1) {
+            cell += char + row[++position];
+          } else if (char === "|") {
+            cells.push(cell.trim());
+            cell = "";
+          } else cell += char;
+        }
+        cells.push(cell.trim());
+        if (cells.length !== widths.length)
+          return { ok: false, error: "Table row has the wrong number of cells." };
+        if (rows.length === 1 && !header && cells.every((value) => /^---+$/.test(value)))
+          header = true;
+        else
+          rows.push(
+            cells.map((value) =>
+              value
+                .split(/(?<!\\)<br>/)
+                .map(unescapeMarkdown)
+                .join("\n")
+            )
+          );
+        index += 1;
+      }
+      if (body[index]?.trim() !== "::: endtable")
+        return { ok: false, error: "Table is missing ::: endtable." };
+      addBlock(
+        { type: "table", widths, rows, header, ...(table[3] ? { align: table[3] } : {}) } as Omit<
+          ResumeBlock,
+          "id" | "zone" | "visible"
+        >,
+        table[1] as ResumeZone
+      );
+      mainStarted = true;
+      index += 1;
+      continue;
+    }
+    if (/^:::\s*(?:table|endtable|pagebreak)\b/.test(line))
+      return { ok: false, error: `Unexpected table or page break marker at line ${sourceLine}.` };
+
+    const container = /^::: columns(?:\{zone=(header|sidebar|main|footer)\})?$/.exec(line);
+    if (container) {
+      const columns: Extract<ResumeBlock, { type: "columns" }>["columns"] = [];
+      index += 1;
+      while (index < body.length && body[index].trim() !== "::: endcolumns") {
+        if (!body[index].trim()) {
+          index += 1;
+          continue;
+        }
+        const column = /^::: column width=(\S+)$/.exec(body[index].trim());
+        if (!column || !Number.isFinite(Number(column[1])) || Number(column[1]) <= 0)
+          return {
+            ok: false,
+            error: `Invalid column at line ${frontmatter.bodyStart + index + 1}.`
+          };
+        const start = ++index;
+        let depth = 0;
+        while (index < body.length) {
+          const marker = body[index].trim();
+          if (/^::: columns(?:\{|$)/.test(marker)) depth += 1;
+          if (marker === "::: endcolumns") {
+            if (depth === 0) break;
+            depth -= 1;
+          }
+          if (marker === "::: endcolumn" && depth === 0) break;
+          index += 1;
+        }
+        if (body[index]?.trim() !== "::: endcolumn")
+          return { ok: false, error: "Column is missing ::: endcolumn." };
+        const content = body.slice(start, index).join("\n");
+        let children: ResumeBlock[] = [];
+        if (content.trim()) {
+          const parsed = importResumeMarkdown(
+            `---\nschema: cv-builder/v1\nlanguage: ${detectedLanguage}\n---\n${content}`,
+            nesting + 1
+          );
+          if (!parsed.ok) return parsed;
+          children = parsed.preview.resume.layoutBlocks;
+          warnings.push(
+            ...parsed.preview.warnings.map((warning) => ({
+              ...warning,
+              line: warning.line + frontmatter.bodyStart + start - 4
+            }))
+          );
+        }
+        columns.push({ width: Number(column[1]), blocks: children });
+        index += 1;
+      }
+      if (body[index]?.trim() !== "::: endcolumns")
+        return { ok: false, error: "Columns block is missing ::: endcolumns." };
+      const parentId = importBlockId(blocks.length);
+      const rename = (children: ResumeBlock[], prefix: string): ResumeBlock[] =>
+        children.map((child, childIndex) =>
+          child.type === "columns"
+            ? {
+                ...child,
+                id: `${prefix}-${childIndex}`,
+                columns: child.columns.map((column, columnIndex) => ({
+                  ...column,
+                  blocks: rename(column.blocks, `${prefix}-${childIndex}-${columnIndex}`)
+                }))
+              }
+            : { ...child, id: `${prefix}-${childIndex}` }
+        );
+      addBlock(
+        {
+          type: "columns",
+          columns: columns.map((column, columnIndex) => ({
+            ...column,
+            blocks: rename(column.blocks, `${parentId}-col-${columnIndex}`)
+          }))
+        } as Omit<ResumeBlock, "id" | "zone" | "visible">,
+        (container[1] as ResumeZone | undefined) ?? "main"
+      );
+      mainStarted = true;
+      index += 1;
+      continue;
+    }
+    if (/^:::\s*(?:columns|column|endcolumn|endcolumns)\b/.test(line))
+      return { ok: false, error: `Unexpected column marker at line ${sourceLine}.` };
+
+    const image = /^!\[((?:\\.|[^\]\\])*)\]\(([^)\s]+)\)\s*(?:\{([^{}]*)\})?\s*$/.exec(line);
+    if (image) {
+      const imageAttributes = new Map<string, string>();
+      for (const part of (image[3] ?? "").split(/\s+/)) {
+        const [key, rawValue] = part.split("=");
+        if (key && rawValue && !imageAttributes.has(key)) imageAttributes.set(key, rawValue);
+      }
+      const width = Number(imageAttributes.get("width"));
+      const height = Number(imageAttributes.get("height"));
+      const shape = imageAttributes.get("shape");
+      const placement = imageAttributes.get("placement");
+      addBlock(
+        {
+          type: "image",
+          src: image[2] ?? "",
+          alt: unescapeMarkdown(image[1] ?? "") || "Photo",
+          ...(Number.isInteger(width) && width > 0 ? { width } : {}),
+          ...(Number.isInteger(height) && height > 0 ? { height } : {}),
+          ...(shape === "square" || shape === "rounded" || shape === "circle" ? { shape } : {}),
+          ...(placement === "left" || placement === "right" || placement === "above"
+            ? { placement }
+            : {})
+        } as Omit<ResumeBlock, "id" | "zone" | "visible">,
+        parseZoneAttribute(imageAttributes.get("zone"))
+      );
+      index += 1;
+      continue;
+    }
+
     inspectMarkdownLine(rawLine, sourceLine, warnings);
 
     const heading = /^(#{1,3})\s+(.+)$/.exec(line);
     if (heading) {
       const level = heading[1].length as 1 | 2 | 3;
       if (level === 2) mainStarted = true;
-      const parsedTitle = parseLinkedText(heading[2], sourceLine, warnings);
-
+      const headingAttributes = parseBlockAttributes(heading[2]);
+      const parsedTitle = parseLinkedText(headingAttributes.text, sourceLine, warnings);
       if (level === 3) {
         let next = index + 1;
         while (next < body.length && !body[next].trim()) next += 1;
@@ -280,6 +570,9 @@ export function importResumeMarkdown(source: string): ResumeImportResult {
           while (index < body.length) {
             const entryLine = body[index].trim();
             if (!entryLine) {
+              let nextLine = index + 1;
+              while (nextLine < body.length && !body[nextLine].trim()) nextLine += 1;
+              if (parseBlockAttributes(body[nextLine]?.trim() ?? "").zone) break;
               index += 1;
               continue;
             }
@@ -320,36 +613,56 @@ export function importResumeMarkdown(source: string): ResumeImportResult {
             break;
           }
           if (links.length > 0) entry.links = links;
-          addBlock({ type: "entry", entry } as Omit<ResumeBlock, "id" | "zone" | "visible">);
+          addBlock(
+            { type: "entry", entry } as Omit<ResumeBlock, "id" | "zone" | "visible">,
+            headingAttributes.zone
+          );
           continue;
         }
       }
 
-      addBlock({
-        type: "heading",
-        level,
-        text: parsedTitle.text,
-        textLinks: parsedTitle.links
-      } as Omit<ResumeBlock, "id" | "zone" | "visible">);
+      addBlock(
+        {
+          type: "heading",
+          level,
+          text: parsedTitle.text,
+          textLinks: parsedTitle.links,
+          ...(headingAttributes.align ? { align: headingAttributes.align } : {}),
+          ...(headingAttributes.icon ? { icon: headingAttributes.icon } : {}),
+          underline: headingAttributes.underline,
+          uppercase: headingAttributes.uppercase,
+          bold: headingAttributes.bold
+        } as Omit<ResumeBlock, "id" | "zone" | "visible">,
+        headingAttributes.zone
+      );
       index += 1;
       continue;
     }
 
-    if (/^(?:---|\*\s*\*\s*\*)$/.test(line)) {
-      addBlock({ type: "divider" } as Omit<ResumeBlock, "id" | "zone" | "visible">);
+    const lineAttributes = parseBlockAttributes(line);
+    if (/^(?:---|\*\s*\*\s*\*)$/.test(lineAttributes.text)) {
+      addBlock(
+        { type: "divider" } as Omit<ResumeBlock, "id" | "zone" | "visible">,
+        lineAttributes.zone
+      );
       index += 1;
       continue;
     }
 
     const labeled = /^\*\*(.+?):\*\*\s+(.+)$/.exec(line);
     if (labeled) {
-      const parsed = parseLinkedText(labeled[2], sourceLine, warnings);
-      addBlock({
-        type: "labeled_text",
-        label: unescapeMarkdown(labeled[1]),
-        text: parsed.text,
-        textLinks: parsed.links
-      } as Omit<ResumeBlock, "id" | "zone" | "visible">);
+      const labeledAttributes = parseBlockAttributes(labeled[2]);
+      const parsed = parseLinkedText(labeledAttributes.text, sourceLine, warnings);
+      addBlock(
+        {
+          type: "labeled_text",
+          label: unescapeMarkdown(labeled[1]),
+          text: parsed.text,
+          textLinks: parsed.links,
+          ...(labeledAttributes.align ? { align: labeledAttributes.align } : {})
+        } as Omit<ResumeBlock, "id" | "zone" | "visible">,
+        labeledAttributes.zone
+      );
       index += 1;
       continue;
     }
@@ -359,22 +672,39 @@ export function importResumeMarkdown(source: string): ResumeImportResult {
       const items: string[] = [];
       const links: ResumeLink[] = [];
       const firstBulletIndex = index;
+      let bulletAlign: ParsedBlockAttributes["align"];
+      let bulletColumns: ParsedBlockAttributes["columns"];
+      let bulletZone: ResumeZone | undefined;
       while (index < body.length) {
         const item = /^[-*+]\s+(.+)$/.exec(body[index].trim());
         if (!item) break;
         if (index !== firstBulletIndex) {
           inspectMarkdownLine(body[index], frontmatter.bodyStart + index + 1, warnings);
         }
-        const parsed = parseLinkedText(item[1], frontmatter.bodyStart + index + 1, warnings);
+        const itemAttributes =
+          index === firstBulletIndex ? parseBlockAttributes(item[1]) : undefined;
+        const parsed = parseLinkedText(
+          itemAttributes?.text ?? item[1],
+          frontmatter.bodyStart + index + 1,
+          warnings
+        );
+        if (itemAttributes?.align) bulletAlign = itemAttributes.align;
+        if (itemAttributes?.columns) bulletColumns = itemAttributes.columns;
+        if (itemAttributes?.zone) bulletZone = itemAttributes.zone;
         items.push(parsed.text);
         if (parsed.links) links.push(...parsed.links);
         index += 1;
       }
-      addBlock({
-        type: "bullet_list",
-        items,
-        textLinks: links.length > 0 ? links : undefined
-      } as Omit<ResumeBlock, "id" | "zone" | "visible">);
+      addBlock(
+        {
+          type: "bullet_list",
+          items,
+          textLinks: links.length > 0 ? links : undefined,
+          ...(bulletAlign ? { align: bulletAlign } : {}),
+          ...(bulletColumns ? { columns: bulletColumns } : {})
+        } as Omit<ResumeBlock, "id" | "zone" | "visible">,
+        bulletZone
+      );
       continue;
     }
 
@@ -384,12 +714,22 @@ export function importResumeMarkdown(source: string): ResumeImportResult {
       paragraphLines.push(body[index].trim());
       index += 1;
     }
+    const paragraphAttributes = parseBlockAttributes(paragraphLines[0]);
+    if (paragraphAttributes.text === "") {
+      paragraphLines.shift();
+    } else {
+      paragraphLines[0] = paragraphAttributes.text;
+    }
     const parsed = parseLinkedText(paragraphLines.join(" "), sourceLine, warnings);
-    addBlock({
-      type: "paragraph",
-      text: parsed.text,
-      textLinks: parsed.links
-    } as Omit<ResumeBlock, "id" | "zone" | "visible">);
+    addBlock(
+      {
+        type: "paragraph",
+        text: parsed.text,
+        textLinks: parsed.links,
+        ...(paragraphAttributes.align ? { align: paragraphAttributes.align } : {})
+      } as Omit<ResumeBlock, "id" | "zone" | "visible">,
+      paragraphAttributes.zone
+    );
   }
 
   const parsedBlocks = resumeSchema.shape.layoutBlocks.safeParse(blocks);
@@ -404,17 +744,17 @@ export function importResumeMarkdown(source: string): ResumeImportResult {
   }
 
   const fullName =
-    parsedBlocks.data.find(
+    flattenResumeBlocks(parsedBlocks.data).find(
       (block): block is Extract<ResumeBlock, { type: "heading" }> =>
         block.type === "heading" && block.level === 1
     )?.text ?? "Resume";
-  const resume = emptyResume(detectedLanguage, fullName, parsedBlocks.data);
+  const resume = emptyResume(detectedLanguage, fullName, parsedBlocks.data, frontmatter.layout);
   return {
     ok: true,
     preview: {
       resume,
       language: resume.language,
-      blockCount: resume.layoutBlocks.length,
+      blockCount: countResumeBlocks(resume.layoutBlocks),
       warnings
     }
   };
@@ -423,7 +763,7 @@ export function importResumeMarkdown(source: string): ResumeImportResult {
 const serializeEntry = (block: Extract<ResumeBlock, { type: "entry" }>) => {
   const { entry } = block;
   const lines = [
-    `### ${escapeMarkdown(entry.title)}`,
+    `### ${escapeMarkdown(entry.title)}{zone=${block.zone}}`,
     `**Subtitle:** ${escapeMarkdown(entry.subtitle ?? "")}`,
     `**Start:** ${escapeMarkdown(entry.start ?? "")}`,
     `**End:** ${escapeMarkdown(entry.end ?? "")}`,
@@ -435,39 +775,99 @@ const serializeEntry = (block: Extract<ResumeBlock, { type: "entry" }>) => {
       lines.push(`**Link:** [${escapeMarkdown(link.label)}](${link.url})`);
   }
   lines.push(...entry.bullets.map((item) => `- ${escapeMarkdown(item)}`));
-  return lines.join("\n");
+  return lines.map((line) => line.trimEnd()).join("\n");
 };
 
 export function exportResumeMarkdown(resumeInput: Resume): string {
   const resume = resumeSchema.parse(resumeInput);
-  const sections = resume.layoutBlocks
-    .filter((block) => block.visible)
-    .flatMap((block): string[] => {
-      switch (block.type) {
-        case "heading":
-          return [`${"#".repeat(block.level)} ${serializeLinkedText(block.text, block.textLinks)}`];
-        case "paragraph":
-          return [serializeLinkedText(block.text, block.textLinks)];
-        case "labeled_text":
-          return [
-            `**${escapeMarkdown(block.label)}:** ${serializeLinkedText(block.text, block.textLinks)}`
-          ];
-        case "bullet_list":
-          return [
-            block.items.map((item) => `- ${serializeLinkedText(item, block.textLinks)}`).join("\n")
-          ];
-        case "divider":
-          return ["---"];
-        case "entry":
-          return [serializeEntry(block)];
-        case "spacer":
-          return [];
-      }
-    });
+  const layout =
+    resume.layout ??
+    (resume.layoutBlocks.some((block) => block.zone === "sidebar") ? "two-column" : "one-column");
+  const serializeBlocks = (blocks: ResumeBlock[]): string[] =>
+    blocks
+      .filter((block) => block.visible)
+      .flatMap((block): string[] => {
+        switch (block.type) {
+          case "page_break":
+            return [`::: pagebreak{zone=${block.zone}}`];
+          case "table": {
+            const rows = block.rows.map(
+              (row) =>
+                `| ${row.map((cell) => cell.split("\n").map(escapeMarkdown).join("<br>").replaceAll("|", "\\|")).join(" | ")} |`
+            );
+            if (block.header) rows.splice(1, 0, `| ${block.widths.map(() => "---").join(" | ")} |`);
+            return [
+              `::: table{zone=${block.zone} widths=${block.widths.join(",")}${block.align ? ` align=${block.align}` : ""}}\n${rows.join("\n")}\n::: endtable`
+            ];
+          }
+          case "columns":
+            return [
+              `::: columns{zone=${block.zone}}\n\n${block.columns.map((column) => `::: column width=${column.width}\n\n${serializeBlocks(column.blocks).join("\n\n")}\n\n::: endcolumn`).join("\n\n")}\n\n::: endcolumns`
+            ];
+          case "heading":
+            return [
+              `${"#".repeat(block.level)} ${serializeLinkedText(block.text, block.textLinks)}${serializeBlockAttributes(
+                [
+                  `zone=${block.zone}`,
+                  { key: "icon", value: block.icon },
+                  { key: "align", value: block.align },
+                  { key: "underline", value: block.underline },
+                  { key: "uppercase", value: block.uppercase },
+                  { key: "bold", value: block.bold }
+                ]
+              )}`
+            ];
+          case "paragraph":
+            return [
+              `${serializeLinkedText(block.text, block.textLinks)}${serializeBlockAttributes([
+                `zone=${block.zone}`,
+                { key: "align", value: block.align }
+              ])}`
+            ];
+          case "labeled_text":
+            return [
+              `**${escapeMarkdown(block.label)}:** ${serializeLinkedText(block.text, block.textLinks)}${serializeBlockAttributes(
+                [`zone=${block.zone}`, { key: "align", value: block.align }]
+              )}`
+            ];
+          case "bullet_list": {
+            const [firstItem, ...restItems] = block.items;
+            const firstLine = `- ${serializeLinkedText(firstItem, block.textLinks)}${serializeBlockAttributes(
+              [
+                `zone=${block.zone}`,
+                { key: "columns", value: block.columns },
+                { key: "align", value: block.align }
+              ]
+            )}`;
+            return [
+              [
+                firstLine,
+                ...restItems.map((item) => `- ${serializeLinkedText(item, block.textLinks)}`)
+              ].join("\n")
+            ];
+          }
+          case "divider":
+            return [`---{zone=${block.zone}}`];
+          case "entry":
+            return [serializeEntry(block)];
+          case "spacer":
+            return [];
+          case "image":
+            return [
+              `![${escapeMarkdown(block.alt)}](${block.src})${serializeBlockAttributes([
+                `zone=${block.zone}`,
+                { key: "shape", value: block.shape },
+                { key: "placement", value: block.placement },
+                { key: "width", value: block.width },
+                { key: "height", value: block.height }
+              ])}`
+            ];
+        }
+      });
 
   return [
-    `---\nschema: ${RESUME_INTERCHANGE_SCHEMA_VERSION}\nlanguage: ${resume.language}\n---`,
-    ...sections
+    `---\nschema: ${RESUME_INTERCHANGE_SCHEMA_VERSION}\nlanguage: ${resume.language}\nlayout: ${layout}\n---`,
+    ...serializeBlocks(resume.layoutBlocks)
   ]
     .join("\n\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -527,7 +927,7 @@ export function importResumeJson(source: string): ResumeImportResult {
     preview: {
       resume,
       language: resume.language,
-      blockCount: resume.layoutBlocks.length,
+      blockCount: countResumeBlocks(resume.layoutBlocks),
       warnings
     }
   };
