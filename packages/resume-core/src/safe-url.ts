@@ -15,3 +15,8 @@ export const toSafeHttpUrl = (value: string): string | undefined => {
 };
 
 export const isSafeHttpUrl = (value: string): boolean => toSafeHttpUrl(value) !== undefined;
+
+const safeImageDataUrl = /^data:image\/(?:png|jpeg);base64,[a-z0-9+/]+={0,2}$/iu;
+
+export const toSafeImageUrl = (value: string): string | undefined =>
+  toSafeHttpUrl(value) ?? (safeImageDataUrl.test(value) ? value : undefined);
