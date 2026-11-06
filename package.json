@@ -43,7 +43,7 @@
     "playwright": "1.63.0",
     "prettier": "3.8.4",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.12"
+    "vitest": "^5.0.5"
   },
   "overrides": {
     "nanoid": "^3.3.18",
